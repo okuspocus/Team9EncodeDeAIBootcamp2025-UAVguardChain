@@ -40,4 +40,7 @@ If the claim is contested and proven invalid, no compensation is issued.
 The final resolution (payment or rejection) is recorded on the blockchain.
 
 
+
+
     
+![UAVguardCHAIN-2025-04-13-112304](https://github.com/user-attachments/assets/68d13bef-0298-40ea-a368-436e306d7c2a)
