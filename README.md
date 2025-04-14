@@ -39,6 +39,38 @@ If the claim is contested and proven invalid, no compensation is issued.
 
 The final resolution (payment or rejection) is recorded on the blockchain.
 
+Architecture:
+
+       +------------------------------------------+
+       |               User Interface             |
+       |              (Next.js Frontend)          |
+       +------------------------------------------+
+                         | 
+                         v
+          +--------------------------------------------+
+          |               Backend Server               |
+          |           (Node.js API / Python)           |
+          +--------------------------------------------+
+               |                     |                   |
+               v                     v                   v
+     +------------------+   +---------------------+    +---------------------+
+     |     AI Agent     |   |   Blockchain Layer   |    |     RAG System      |
+     | (LangChain /     |   | (Solidity Smart      |    | (LangChain /        |
+     |  LlamaIndex)     |   |  Contracts)          |    |  LlamaIndex)        |
+     +------------------+   +---------------------+    +---------------------+
+         |                |                         |       
+         v                v                         v
++-------------------+  +--------------------+   +-------------------------+
+| Flight Data Store  |  | Flight Registry    |   | Insurance Smart         |
+| (Text File / DB)   |  | Contract (Solidity)|   | Contract (Solidity)     |
++-------------------+  +--------------------+   +-------------------------+
+                            |                         |
+                            v                         v
+                      +---------------------+   +-------------------------+
+                      | Claims Smart        |   | Transaction Confirmation |
+                      | Contract (Solidity) |   | (Blockchain interaction) |
+                      +---------------------+   +-------------------------+
+
 
 
 
