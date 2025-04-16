@@ -1,5 +1,8 @@
 # Team9EncodeDeAIBootcamp2025-UAVguardChain
 Bootcamp final project
+
+<img width="1547" alt="droneAI_web3" src="https://github.com/user-attachments/assets/c2cb6c88-33d7-4ac7-83f6-8299de165e24" />
+
 ## Step-by-Step Description
 
 ### The user/pilot opens the app
