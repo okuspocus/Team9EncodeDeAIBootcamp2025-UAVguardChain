@@ -18,7 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
 import { ComplianceSuggestions } from "@/components/compliance-suggestions"
 
-// ORIGINAL CODE FROM YOUR COLLEAGUE:
+// ORIGINAL CODE :
 // const formSchema = z.object({
 //   droneName: z.string().min(2, {
 //     message: "Drone name must be at least 2 characters.",
@@ -115,7 +115,7 @@ export default function RegisterFlightPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
 
-  // ORIGINAL CODE FROM YOUR COLLEAGUE:
+  // ORIGINAL CODE :
   // const form = useForm<z.infer<typeof formSchema>>({
   //   resolver: zodResolver(formSchema),
   //   defaultValues: {
@@ -174,7 +174,7 @@ export default function RegisterFlightPage() {
         <div className="space-y-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* ORIGINAL CODE FROM YOUR COLLEAGUE - Drone Specifications Card */}
+              {/* ORIGINAL CODE  - Drone Specifications Card */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -269,7 +269,7 @@ export default function RegisterFlightPage() {
                 </CardContent>
               </Card>
 
-              {/* ORIGINAL CODE FROM YOUR COLLEAGUE - Flight Plan Card (First Part) */}
+              {/* ORIGINAL CODE  - Flight Plan Card (First Part) */}
               <Card>
                 <CardHeader>
                   <CardTitle>Flight Plan</CardTitle>
@@ -306,7 +306,7 @@ export default function RegisterFlightPage() {
                     )}
                   />
 
-                  {/* ORIGINAL CODE FROM YOUR COLLEAGUE - Flight Description */}
+                  {/* ORIGINAL CODE  - Flight Description */}
                   <FormField
                     control={form.control}
                     name="flightDescription"
@@ -331,7 +331,7 @@ export default function RegisterFlightPage() {
                     )}
                   />
 
-                  {/* ORIGINAL CODE FROM YOUR COLLEAGUE - Flight Date and Time */}
+                  {/* ORIGINAL CODE  - Flight Date and Time */}
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -425,7 +425,7 @@ export default function RegisterFlightPage() {
                   />
 
                   {/* REPLACED CODE - Area-Based Location instead of single location field */}
-                  {/* ORIGINAL CODE FROM YOUR COLLEAGUE:
+                  {/* ORIGINAL CODE :
                   <FormField
                     control={form.control}
                     name="location"
