@@ -38,6 +38,9 @@ If the claim is uncontested (or valid after a failed challenge), the smart contr
 If the claim is contested and proven invalid, no compensation is issued.
 
 The final resolution (payment or rejection) is recorded on the blockchain.
+    
+![UAVguardCHAIN-2025-04-13-112304](https://github.com/user-attachments/assets/68d13bef-0298-40ea-a368-436e306d7c2a)
+
 
 Architecture:
 
@@ -60,19 +63,16 @@ Architecture:
      +------------------+   +---------------------+    +---------------------+
          |                |                         |       
          v                v                         v
-+-------------------+  +--------------------+   +-------------------------+
-| Flight Data Store  |  | Flight Registry    |   | Insurance Smart         |
-| (Text File / DB)   |  | Contract (Solidity)|   | Contract (Solidity)     |
-+-------------------+  +--------------------+   +-------------------------+
-                            |                         |
-                            v                         v
-                      +---------------------+   +-------------------------+
-                      | Claims Smart        |   | Transaction Confirmation |
-                      | Contract (Solidity) |   | (Blockchain interaction) |
-                      +---------------------+   +-------------------------+
+       +-------------------+  +--------------------+   +-------------------------+
+       | Flight Data Store  |  | Flight Registry    |   | Insurance Smart         |
+       | (Text File / DB)   |  | Contract (Solidity)|   | Contract (Solidity)     |
+       +-------------------+  +--------------------+   +-------------------------+
+                                   |                         |
+                                   v                         v
+                             +---------------------+   +-------------------------+
+                             | Claims Smart        |   | Transaction Confirmation |
+                             | Contract (Solidity) |   | (Blockchain interaction) |
+                             +---------------------+   +-------------------------+
 
 
 
-
-    
-![UAVguardCHAIN-2025-04-13-112304](https://github.com/user-attachments/assets/68d13bef-0298-40ea-a368-436e306d7c2a)
