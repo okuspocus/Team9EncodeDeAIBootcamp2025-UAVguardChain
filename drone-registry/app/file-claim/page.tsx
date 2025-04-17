@@ -17,6 +17,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { cn } from "@/lib/utils"
 import { FileUploader } from "@/components/file-uploader"
 import { ClaimStatusTracker } from "@/components/claim-status-tracker"
+import { ethers } from "ethers"; // Import ethers
+import { WalletConnect } from "@/components/wallet-connect"; // Import WalletConnect
 
 const formSchema = z.object({
   droneName: z.string().min(2, {
@@ -48,6 +50,7 @@ const formSchema = z.object({
 export default function FileClaimPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [filesUploaded, setFilesUploaded] = useState(false)
+  const [walletConnected, setWalletConnected] = useState(false) // State for wallet connection
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -61,16 +64,74 @@ export default function FileClaimPage() {
     },
   })
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true)
     console.log(values)
 
-    // Simulate API call
-    setTimeout(() => {
+    // Check if wallet is connected
+    if (!walletConnected) {
+      alert("Please connect your wallet first.")
       setIsSubmitting(false)
-      // Show success message or redirect
-      alert("Claim submitted successfully!")
-    }, 1500)
+      return
+    }
+
+    const sendToBlockchain = async () => {
+      if (!window.ethereum) {
+        alert("Please install MetaMask!")
+        setIsSubmitting(false)
+        return
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum)
+      const signer = await provider.getSigner() // Get the signer
+
+      // Replace with your smart contract address and ABI
+      const contractAddress = "YOUR_CONTRACT_ADDRESS"
+      const contractABI = [
+        // Your contract ABI here
+        {
+          inputs: [
+            { internalType: "string", name: "droneName", type: "string" },
+            { internalType: "string", name: "droneModel", type: "string" },
+            { internalType: "string", name: "serialNumber", type: "string" },
+            { internalType: "date", name: "incidentDate", type: "date" },
+            { internalType: "string", name: "incidentType", type: "string" },
+            { internalType: "string", name: "incidentDescription", type: "string" },
+            { internalType: "string", name: "damageDescription", type: "string" },
+            { internalType: "string", name: "claimAmount", type: "string" },
+          ],
+          name: "fileClaim",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+      ]
+
+      const contract = new ethers.Contract(contractAddress, contractABI, signer)
+
+      try {
+        const tx = await contract.fileClaim(
+          values.droneName,
+          values.droneModel,
+          values.serialNumber,
+          values.incidentDate.toISOString(), // Format date correctly
+          values.incidentType,
+          values.incidentDescription,
+          values.damageDescription,
+          values.claimAmount
+        )
+
+        await tx.wait() // Wait for the transaction to be mined
+        alert("Claim submitted successfully!") // Success alert
+      } catch (error) {
+        console.error("Error submitting claim:", error) // Log error
+        alert("There was an error submitting the claim.") // Error alert
+      } finally {
+        setIsSubmitting(false) // Reset loading state
+      }
+    }
+
+    sendToBlockchain() // Call function to send transaction
   }
 
   return (
@@ -79,6 +140,8 @@ export default function FileClaimPage() {
         <h1 className="text-3xl font-bold tracking-tight">File a Claim</h1>
         <p className="text-muted-foreground">Submit an insurance claim for your drone incident</p>
       </div>
+
+      <WalletConnect onConnect={() => setWalletConnected(true)} connected={walletConnected} /> {/* WalletConnect component */}
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-6">
@@ -278,10 +341,7 @@ export default function FileClaimPage() {
                 <CardFooter>
                   <Button type="submit" className="w-full" disabled={isSubmitting || !filesUploaded}>
                     {isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Submitting Claim...
-                      </>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                       "Submit Claim"
                     )}
