@@ -17,6 +17,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
 import { ComplianceSuggestions } from "@/components/compliance-suggestions"
+import { ethers } from "ethers"; // Import ethers
 
 const formSchema = z.object({
   droneName: z.string().min(2, {
@@ -77,15 +78,72 @@ export default function RegisterFlightPage() {
   })
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsSubmitting(true)
-    console.log(values)
-
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false)
-      // Show success message or redirect
-      alert("Flight registered successfully!")
-    }, 1500)
+    setIsSubmitting(true);
+    console.log(values); // Log the collected data
+  
+    const sendToBlockchain = async () => {
+      if (!window.ethereum) {
+        alert("Please install MetaMask!");
+        setIsSubmitting(false);
+        return;
+      }
+  
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner(); // Get the signer
+  
+      // Replace with your smart contract address and ABI
+      const contractAddress = "YOUR_CONTRACT_ADDRESS";
+      const contractABI = [
+        {
+          "inputs": [
+            { "internalType": "string", "name": "droneName", "type": "string" },
+            { "internalType": "string", "name": "droneModel", "type": "string" },
+            { "internalType": "string", "name": "serialNumber", "type": "string" },
+            { "internalType": "string", "name": "weight", "type": "string" },
+            { "internalType": "string", "name": "flightPurpose", "type": "string" },
+            { "internalType": "string", "name": "flightDescription", "type": "string" },
+            { "internalType": "string", "name": "flightDate", "type": "string" }, // Change to string
+            { "internalType": "string", "name": "startTime", "type": "string" },
+            { "internalType": "string", "name": "endTime", "type": "string" },
+            { "internalType": "string", "name": "location", "type": "string" },
+            { "internalType": "string", "name": "altitude", "type": "string" },
+          ],
+          "name": "registerFlight",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        // Add other functions and events as needed
+      ];
+  
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
+  
+      try {
+        const tx = await contract.registerFlight(
+          values.droneName,
+          values.droneModel,
+          values.serialNumber,
+          values.weight,
+          values.flightPurpose,
+          values.flightDescription,
+          values.flightDate,
+          values.startTime,
+          values.endTime,
+          values.location,
+          values.altitude
+        );
+  
+        await tx.wait(); // Wait for the transaction to be mined
+        alert("Flight registered successfully!");
+      } catch (error) {
+        console.error("Error registering flight:", error);
+        alert("There was an error registering the flight.");
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+  
+    sendToBlockchain();
   }
 
   return (
