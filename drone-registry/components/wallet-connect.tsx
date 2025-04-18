@@ -1,26 +1,34 @@
+// components/wallet-connect.tsx
 "use client"
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Wallet, Loader2, CheckCircle2 } from "lucide-react"
+import { ethers } from "ethers"
 
 interface WalletConnectProps {
-  onConnect: () => void
-  connected: boolean
+  onConnect: (account: string) => void; // Ensure this accepts a string argument
+  connected: boolean;
 }
 
 export function WalletConnect({ onConnect, connected }: WalletConnectProps) {
   const [connecting, setConnecting] = useState(false)
 
-  const handleConnect = () => {
+  const handleConnect = async () => {
     setConnecting(true)
-
-    // Simulate wallet connection
-    setTimeout(() => {
-      setConnecting(false)
-      onConnect()
-    }, 1500)
+    if (window.ethereum) {
+      const provider = new ethers.BrowserProvider(window.ethereum) // Correct provider initialization
+      try {
+        const accounts = await provider.send("eth_requestAccounts", [])
+        onConnect(accounts[0]); // Pass the connected account to the parent
+      } catch (error) {
+        console.error("Error connecting to wallet:", error) // Error handling
+      }
+    } else {
+      alert("Please install MetaMask!")
+    }
+    setConnecting(false)
   }
 
   if (connected) {
@@ -33,7 +41,7 @@ export function WalletConnect({ onConnect, connected }: WalletConnectProps) {
             </div>
             <div>
               <p className="font-medium text-green-700 dark:text-green-400">Wallet Connected</p>
-              <p className="text-sm text-muted-foreground">0x71C...F3E2</p>
+              <p className="text-sm text-muted-foreground">Connected Account</p>
             </div>
           </div>
         </CardContent>
@@ -49,9 +57,6 @@ export function WalletConnect({ onConnect, connected }: WalletConnectProps) {
         </div>
         <div className="text-center">
           <h3 className="font-medium text-lg">Connect Your Wallet</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Connect your cryptocurrency wallet to complete the payment
-          </p>
         </div>
         <Button className="w-full mt-2" onClick={handleConnect} disabled={connecting}>
           {connecting ? (

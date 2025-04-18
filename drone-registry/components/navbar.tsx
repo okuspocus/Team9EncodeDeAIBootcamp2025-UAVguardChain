@@ -6,6 +6,8 @@ import { DrillIcon as Drone, BarChart2, Shield, FileText, Clock } from "lucide-r
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { MobileMenu } from "@/components/mobile-menu"
+import { WalletConnect } from "@/components/wallet-connect" // Import the WalletConnect component
+import { useState } from "react"
 
 const navItems = [
   { name: "Dashboard", href: "/", icon: BarChart2 },
@@ -17,6 +19,11 @@ const navItems = [
 
 export default function Navbar() {
   const pathname = usePathname()
+  const [connectedAccount, setConnectedAccount] = useState<string | null>(null)
+
+  const handleConnect = (account: string) => {
+    setConnectedAccount(account)
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -46,9 +53,7 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center justify-end space-x-2">
-          <Button variant="outline" size="sm">
-            Sign In
-          </Button>
+          <WalletConnect onConnect={handleConnect} connected={!!connectedAccount} /> {/* Pass props */}
           <MobileMenu items={navItems} />
         </div>
       </div>

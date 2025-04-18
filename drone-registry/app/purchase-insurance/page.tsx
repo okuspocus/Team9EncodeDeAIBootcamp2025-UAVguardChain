@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { InsurancePlanCard } from "@/components/insurance-plan-card"
 import { WalletConnect } from "@/components/wallet-connect"
+import { ethers } from "ethers"; // Import ethers
 
 const formSchema = z.object({
   droneName: z.string().min(2, {
@@ -57,16 +58,69 @@ export default function PurchaseInsurancePage() {
     },
   })
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true)
     console.log(values)
 
-    // Simulate API call
-    setTimeout(() => {
+    if (!walletConnected) {
+      alert("Please connect your wallet first.")
       setIsSubmitting(false)
-      // Show success message or redirect
-      alert("Insurance purchased successfully!")
-    }, 1500)
+      return
+    }
+
+    const sendToBlockchain = async () => {
+      if (!window.ethereum) {
+        alert("Please install MetaMask!")
+        setIsSubmitting(false)
+        return
+      }
+
+      const provider = new ethers.BrowserProvider(window.ethereum)
+      const signer = await provider.getSigner() // Get the signer
+
+      // Replace with your smart contract address and ABI
+      const contractAddress = "YOUR_CONTRACT_ADDRESS"
+      const contractABI = [
+        // Your contract ABI here
+        {
+          inputs: [
+            { internalType: "string", name: "droneName", type: "string" },
+            { internalType: "string", name: "droneModel", type: "string" },
+            { internalType: "string", name: "serialNumber", type: "string" },
+            { internalType: "string", name: "insurancePlan", type: "string" },
+            { internalType: "date", name: "coverageStartDate", type: "date" },
+            { internalType: "string", name: "coverageDuration", type: "string" },
+          ],
+          name: "purchaseInsurance",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+      ]
+
+      const contract = new ethers.Contract(contractAddress, contractABI, signer)
+
+      try {
+        const tx = await contract.purchaseInsurance(
+          values.droneName,
+          values.droneModel,
+          values.serialNumber,
+          values.insurancePlan,
+          values.coverageStartDate.toISOString(), // Convert date to string
+          values.coverageDuration
+        )
+
+        await tx.wait() // Wait for the transaction to be mined
+        alert("Insurance purchased successfully!")
+      } catch (error) {
+        console.error("Error purchasing insurance:", error)
+        alert("There was an error purchasing the insurance.")
+      } finally {
+        setIsSubmitting(false)
+      }
+    }
+
+    sendToBlockchain()
   }
 
   const handlePlanSelect = (planId: string) => {
@@ -350,16 +404,11 @@ export default function PurchaseInsurancePage() {
                 disabled={isSubmitting || (form.watch("paymentMethod").startsWith("crypto") && !walletConnected)}
               >
                 {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
-                  </>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <>
-                    <Shield className="mr-2 h-4 w-4" />
-                    Purchase Insurance
-                  </>
+                  <Shield className="mr-2 h-4 w-4" />
                 )}
+                {isSubmitting ? "Processing..." : "Purchase Insurance"}
               </Button>
             </CardFooter>
           </Card>
