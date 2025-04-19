@@ -1,3 +1,4 @@
+// app/register-flight/page.tsx
 "use client"
 
 import { useState } from "react"
@@ -18,6 +19,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
 import { ComplianceSuggestions } from "@/components/compliance-suggestions"
 import { ethers } from "ethers"; // Import ethers
+import { useAccount } from "wagmi"; // Import useAccount from wagmi for wallet connection
 
 const formSchema = z.object({
   droneName: z.string().min(2, {
@@ -61,6 +63,7 @@ const formSchema = z.object({
 export default function RegisterFlightPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const { isConnected, address } = useAccount(); // Get wallet connection state
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -77,10 +80,17 @@ export default function RegisterFlightPage() {
     },
   })
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     console.log(values); // Log the collected data
   
+    // Check if wallet is connected
+    if (!isConnected) {
+      alert("Please connect your wallet first.");
+      setIsSubmitting(false);
+      return;
+    }
+
     const sendToBlockchain = async () => {
       if (!window.ethereum) {
         alert("Please install MetaMask!");
@@ -91,41 +101,39 @@ export default function RegisterFlightPage() {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner(); // Get the signer
   
-     // Replace with your smart contract address
-    const contractAddress = "YOUR_CONTRACT_ADDRESS";
+      // Replace with your smart contract address
+      const contractAddress = "YOUR_CONTRACT_ADDRESS";
 
-    // Define the contract ABI
-    const contractABI: Array<{ 
-      inputs: any[]; 
-      name: string; 
-      outputs: any[]; 
-      stateMutability: string; 
-      type: string; 
-    }> = [
-      // Your contract ABI here
-      {
-        inputs: [
-          { internalType: "string", name: "droneName", type: "string" },
-          { internalType: "string", name: "droneModel", type: "string" },
-          { internalType: "string", name: "serialNumber", type: "string" },
-          { internalType: "string", name: "weight", type: "string" },
-          { internalType: "string", name: "flightPurpose", type: "string" },
-          { internalType: "string", name: "flightDescription", type: "string" },
-          { internalType: "date", name: "flightDate", type: "date" },
-          { internalType: "string", name: "startTime", type: "string" },
-          { internalType: "string", name: "endTime", type: "string" },
-          { internalType: "string", name: "location", type: "string" },
-          { internalType: "string", name: "altitude", type: "string" },
-        ],
-        name: "registerFlight",
-        outputs: [],
-        stateMutability: "nonpayable",
-        type: "function",
-      },
-      // Add other functions/events as needed
-    ];
+      // Define the contract ABI
+      const contractABI: Array<{ 
+        inputs: any[]; 
+        name: string; 
+        outputs: any[]; 
+        stateMutability: string; 
+        type: string; 
+      }> = [
+        {
+          inputs: [
+            { internalType: "string", name: "droneName", type: "string" },
+            { internalType: "string", name: "droneModel", type: "string" },
+            { internalType: "string", name: "serialNumber", type: "string" },
+            { internalType: "string", name: "weight", type: "string" },
+            { internalType: "string", name: "flightPurpose", type: "string" },
+            { internalType: "string", name: "flightDescription", type: "string" },
+            { internalType: "date", name: "flightDate", type: "date" },
+            { internalType: "string", name: "startTime", type: "string" },
+            { internalType: "string", name: "endTime", type: "string" },
+            { internalType: "string", name: "location", type: "string" },
+            { internalType: "string", name: "altitude", type: "string" },
+          ],
+          name: "registerFlight",
+          outputs: [],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+      ];
 
-    const contract = new ethers.Contract(contractAddress, contractABI, signer);
+      const contract = new ethers.Contract(contractAddress, contractABI, signer);
   
       try {
         const tx = await contract.registerFlight(
