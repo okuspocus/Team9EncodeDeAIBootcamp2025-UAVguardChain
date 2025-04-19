@@ -1,4 +1,3 @@
-// app/register-flight/basic/page.tsx
 "use client"
 
 import { useState } from "react"
@@ -8,9 +7,10 @@ import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ethers } from "ethers"; // Import ethers
+import { ethers } from "ethers"; // Import ethers for blockchain interaction
 import { useAccount } from "wagmi"; // Import useAccount from wagmi for wallet connection
 
+// Define the schema for form validation using Zod
 const formSchema = z.object({
   droneName: z.string().min(1, {
     message: "Drone name is required.",
@@ -18,66 +18,53 @@ const formSchema = z.object({
 })
 
 export default function BasicRegisterFlightPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false) // State to manage submission status
   const { isConnected, address } = useAccount(); // Get wallet connection state
 
+  // Initialize the form with react-hook-form
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema), // Use Zod for validation
     defaultValues: {
-      droneName: "",
+      droneName: "", // Default value for the drone name input
     },
   })
 
+  // Function to handle form submission
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsSubmitting(true)
-    console.log(values) // Log the collected data
-
-    // Check if wallet is connected
+    setIsSubmitting(true); // Set submitting state to true
+    console.log(values); // Log the collected data for debugging
+  
+    // Check if wallet is connected before proceeding
     if (!isConnected) {
-      alert("Please connect your wallet first.")
-      setIsSubmitting(false)
-      return
+      alert("Please connect your wallet first."); // Alert user if wallet is not connected
+      setIsSubmitting(false); // Reset submitting state
+      return;
     }
-
-    const sendToBlockchain = async () => {
-      if (!window.ethereum) {
-        alert("Please install MetaMask!")
-        setIsSubmitting(false)
-        return;
-      }
-
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner(); // Get the signer
-
-      // Replace with your smart contract address and ABI
-      const contractAddress = "YOUR_CONTRACT_ADDRESS";
-      const contractABI = [
-        {
-          inputs: [
-            { internalType: "string", name: "droneName", type: "string" },
-          ],
-          name: "registerFlight",
-          outputs: [],
-          stateMutability: "nonpayable",
-          type: "function",
+  
+    try {
+      // Make a POST request to the API route to register the flight
+      const response = await fetch('/api/registerFlight', {
+        method: 'POST', // Specify the request method
+        headers: {
+          'Content-Type': 'application/json', // Set content type to JSON
         },
-      ];
-
-      const contract = new ethers.Contract(contractAddress, contractABI, signer);
-
-      try {
-        const tx = await contract.registerFlight(values.droneName);
-        await tx.wait(); // Wait for the transaction to be mined
-        alert("Flight registered successfully!"); // Success alert
-      } catch (error) {
-        console.error("Error registering flight:", error); // Log error
-        alert("There was an error registering the flight."); // Error alert
-      } finally {
-        setIsSubmitting(false); // Reset loading state
+        body: JSON.stringify(values), // Send the form values as JSON
+      });
+  
+      const data = await response.json(); // Parse the JSON response
+  
+      // Check if the response indicates an error
+      if (!response.ok) {
+        throw new Error(data.error || 'Error registering flight'); // Throw an error if the response is not OK
       }
+  
+      alert(data.message); // Show success alert with the message from the response
+    } catch (error) {
+      console.error("Error:", error); // Log any errors that occur
+      alert("There was an error registering the flight."); // Alert user of the error
+    } finally {
+      setIsSubmitting(false); // Reset submitting state after the operation
     }
-
-    sendToBlockchain(); // Call function to send transaction
   }
 
   return (
@@ -90,10 +77,10 @@ export default function BasicRegisterFlightPage() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <Input
               placeholder="Drone Name"
-              {...form.register("droneName")}
+              {...form.register("droneName")} // Register the input with react-hook-form
             />
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Registering..." : "Register Flight"}
+            <Button type="submit" disabled={isSubmitting}> {/* Disable button while submitting */}
+              {isSubmitting ? "Registering..." : "Register Flight"} {/* Show loading text if submitting */}
             </Button>
           </form>
         </CardContent>
