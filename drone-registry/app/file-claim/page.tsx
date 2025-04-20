@@ -1,3 +1,4 @@
+// app/file-claim/page.tsx
 "use client"
 
 import { useState } from "react"
@@ -19,6 +20,7 @@ import { FileUploader } from "@/components/file-uploader"
 import { ClaimStatusTracker } from "@/components/claim-status-tracker"
 import { ethers } from "ethers"; // Import ethers
 import { WalletConnect } from "@/components/wallet-connect"; // Import WalletConnect
+import { useAccount } from "wagmi"; // Import useAccount from wagmi for wallet connection
 
 const formSchema = z.object({
   droneName: z.string().min(2, {
@@ -50,7 +52,8 @@ const formSchema = z.object({
 export default function FileClaimPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [filesUploaded, setFilesUploaded] = useState(false)
-  const [walletConnected, setWalletConnected] = useState(false) // State for wallet connection
+  const [walletConnected, setWalletConnected] = useState(false); // State for wallet connection
+  const { isConnected } = useAccount(); // Get wallet connection state
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -88,7 +91,6 @@ export default function FileClaimPage() {
       // Replace with your smart contract address and ABI
       const contractAddress = "YOUR_CONTRACT_ADDRESS"
       const contractABI = [
-        // Your contract ABI here
         {
           inputs: [
             { internalType: "string", name: "droneName", type: "string" },

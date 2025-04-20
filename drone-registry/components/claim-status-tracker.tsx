@@ -1,10 +1,13 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCircle2, Clock, FileText, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAccount } from "wagmi"; // Import useAccount from wagmi
 
 export function ClaimStatusTracker() {
+  const { isConnected } = useAccount(); // Get wallet connection state
+
   // This would typically come from your API or state management
-  const currentStep = 1 // 1: Submitted, 2: Verified, 3: Assessed, 4: Paid
+  const currentStep = isConnected ? 1 : 0; // Example: 0 if not connected, otherwise set to the actual step
 
   const steps = [
     {
@@ -31,7 +34,7 @@ export function ClaimStatusTracker() {
       description: "Funds transferred to your wallet",
       icon: CheckCircle2,
     },
-  ]
+  ];
 
   return (
     <Card>
@@ -41,61 +44,65 @@ export function ClaimStatusTracker() {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {steps.map((step, index) => {
-            const isActive = step.id === currentStep
-            const isCompleted = step.id < currentStep
-            const isLast = index === steps.length - 1
+          {isConnected ? (
+            steps.map((step, index) => {
+              const isActive = step.id === currentStep;
+              const isCompleted = step.id < currentStep;
+              const isLast = index === steps.length - 1;
 
-            return (
-              <div key={step.id} className="relative">
-                <div className="flex items-start gap-3">
-                  <div
-                    className={cn(
-                      "flex items-center justify-center rounded-full w-8 h-8 mt-0.5",
-                      isCompleted
-                        ? "bg-green-100 dark:bg-green-900"
-                        : isActive
-                          ? "bg-blue-100 dark:bg-blue-900"
-                          : "bg-muted",
-                    )}
-                  >
-                    <step.icon
+              return (
+                <div key={step.id} className="relative">
+                  <div className="flex items-start gap-3">
+                    <div
                       className={cn(
-                        "h-4 w-4",
+                        "flex items-center justify-center rounded-full w-8 h-8 mt-0.5",
                         isCompleted
-                          ? "text-green-600 dark:text-green-400"
+                          ? "bg-green-100 dark:bg-green-900"
                           : isActive
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-muted-foreground",
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <p
-                      className={cn(
-                        "font-medium",
-                        isCompleted
-                          ? "text-green-600 dark:text-green-400"
-                          : isActive
-                            ? "text-blue-600 dark:text-blue-400"
-                            : "text-muted-foreground",
+                            ? "bg-blue-100 dark:bg-blue-900"
+                            : "bg-muted",
                       )}
                     >
-                      {step.name}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{step.description}</p>
-                  </div>
-                </div>
+                      <step.icon
+                        className={cn(
+                          "h-4 w-4",
+                          isCompleted
+                            ? "text-green-600 dark:text-green-400"
+                            : isActive
+                              ? "text-blue-600 dark:text-blue-400"
+                              : "text-muted-foreground",
+                        )}
+                      />
+                    </div>
 
-                {!isLast && (
-                  <div className={cn("absolute left-4 top-8 h-full w-px", isCompleted ? "bg-green-500" : "bg-muted")} />
-                )}
-              </div>
-            )
-          })}
+                    <div className="space-y-1">
+                      <p
+                        className={cn(
+                          "font-medium",
+                          isCompleted
+                            ? "text-green-600 dark:text-green-400"
+                            : isActive
+                              ? "text-blue-600 dark:text-blue-400"
+                              : "text-muted-foreground",
+                        )}
+                      >
+                        {step.name}
+                      </p>
+                      <p className="text-sm text-muted-foreground">{step.description}</p>
+                    </div>
+                  </div>
+
+                  {!isLast && (
+                    <div className={cn("absolute left-4 top-8 h-full w-px", isCompleted ? "bg-green-500" : "bg-muted")} />
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <p className="text-muted-foreground">Please connect your wallet to view your claim status.</p>
+          )}
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
