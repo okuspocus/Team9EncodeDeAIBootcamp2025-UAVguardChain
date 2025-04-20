@@ -1,13 +1,4 @@
-Diagram and specifications for smart contract to register a flight, subscribe to an insurance and clam insurance in case of incident
+- in hardhat-cli if you want use hardart alone
 
-```
-# Mapping
-
-# Functions
-registerFlight(droneId, timestamp, ipfsHash…)
-
-# Events
-FlightRegistered(pilot, flightId, blockNumber…)
-```
-
+- in dapp-devtools/ -> packages/next/ you have a complete frontend dApp to manage your contract and in -> packages/hardhat/ all stuff to deploy locally and test
 
