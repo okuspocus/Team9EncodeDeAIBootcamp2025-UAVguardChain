@@ -1,8 +1,10 @@
 
 Team 9 Doc
 
-Contracts and hardhat is on packages/hardhat/contracts
-Dev front tools available after ```yarn start``` to http://localhost:3000/ with access to debug and call contracts method easily and access to block explorer
+Contracts and hardhat is on packages/hardhat/    
+
+
+Dev front tools available after ```yarn start``` to http://localhost:3000/ with access to debug and call contracts method easily and access to block explorer    
 
 In a terminal run a local blockchain
 ```
