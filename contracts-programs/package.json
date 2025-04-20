@@ -1,0 +1,13 @@
+{
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "airdrop": "const hre=require('hardhat');const[s]=await hre.ethers.getSigners();await s.sendTransaction({to:process.argv[2],value:hre.ethers.utils.parseEther(process.argv[3])});console.log('✅ Airdropped')"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "dotenv": "^16.5.0",
+    "hardhat": "^2.23.0"
+  }
+}
