@@ -1,3 +1,4 @@
+// app/purchase-insurance/page.tsx
 "use client"
 
 import { useState } from "react"
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils"
 import { InsurancePlanCard } from "@/components/insurance-plan-card"
 import { WalletConnect } from "@/components/wallet-connect"
 import { ethers } from "ethers"; // Import ethers
+import { useAccount } from "wagmi"; // Import useAccount from wagmi for wallet connection
 
 const formSchema = z.object({
   droneName: z.string().min(2, {
@@ -47,6 +49,7 @@ export default function PurchaseInsurancePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [walletConnected, setWalletConnected] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
+  const { isConnected } = useAccount(); // Get wallet connection state
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -62,7 +65,8 @@ export default function PurchaseInsurancePage() {
     setIsSubmitting(true)
     console.log(values)
 
-    if (!walletConnected) {
+    // Check if wallet is connected
+    if (!isConnected) {
       alert("Please connect your wallet first.")
       setIsSubmitting(false)
       return
@@ -81,7 +85,6 @@ export default function PurchaseInsurancePage() {
       // Replace with your smart contract address and ABI
       const contractAddress = "YOUR_CONTRACT_ADDRESS"
       const contractABI = [
-        // Your contract ABI here
         {
           inputs: [
             { internalType: "string", name: "droneName", type: "string" },

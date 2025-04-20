@@ -6,12 +6,11 @@ import { DrillIcon as Drone, BarChart2, Shield, FileText, Clock } from "lucide-r
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { MobileMenu } from "@/components/mobile-menu"
-import { WalletConnect } from "@/components/wallet-connect" // Import the WalletConnect component
+import { WalletConnect } from "@/components/wallet-connect"
 import { useState } from "react"
 
 const navItems = [
   { name: "Dashboard", href: "/", icon: BarChart2 },
-  { name: "Register Flight", href: "/register-flight", icon: Drone },
   { name: "Purchase Insurance", href: "/purchase-insurance", icon: Shield },
   { name: "File Claim", href: "/file-claim", icon: FileText },
   { name: "Flight History", href: "/flight-history", icon: Clock },
@@ -20,6 +19,7 @@ const navItems = [
 export default function Navbar() {
   const pathname = usePathname()
   const [connectedAccount, setConnectedAccount] = useState<string | null>(null)
+  const [dropdownOpen, setDropdownOpen] = useState(false) // State for dropdown visibility
 
   const handleConnect = (account: string) => {
     setConnectedAccount(account)
@@ -50,10 +50,28 @@ export default function Navbar() {
               </Link>
             )
           })}
+
+          {/* Dropdown for Register Flight */}
+          <div className="relative">
+            <Button onClick={() => setDropdownOpen(!dropdownOpen)} className="flex items-center">
+              <Drone className="h-4 w-4 mr-2" />
+              Register Flight
+            </Button>
+            {dropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white border rounded-md shadow-lg z-10">
+                <Link href="/register-flight/basic" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                  Basic Registration
+                </Link>
+                <Link href="/register-flight" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                  Full Registration
+                </Link>
+              </div>
+            )}
+          </div>
         </nav>
 
         <div className="flex items-center justify-end space-x-2">
-          <WalletConnect onConnect={handleConnect} connected={!!connectedAccount} /> {/* Pass props */}
+          <WalletConnect onConnect={handleConnect} connected={!!connectedAccount} />
           <MobileMenu items={navItems} />
         </div>
       </div>

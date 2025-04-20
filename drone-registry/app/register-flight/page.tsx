@@ -1,3 +1,4 @@
+// app/register-flight/page.tsx
 "use client"
 
 import { useState } from "react"
@@ -17,49 +18,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
 import { ComplianceSuggestions } from "@/components/compliance-suggestions"
-import { ethers } from "ethers"; // Import ethers
+import { ethers } from "ethers"; // Import ethers for blockchain interaction
+import { useAccount } from "wagmi"; // Import useAccount from wagmi for wallet connection
 
-// ORIGINAL CODE:
-// const formSchema = z.object({
-//   droneName: z.string().min(2, {
-//     message: "Drone name must be at least 2 characters.",
-//   }),
-//   droneModel: z.string().min(2, {
-//     message: "Drone model must be at least 2 characters.",
-//   }),
-//   droneType: z.string({
-//     required_error: "Please select a drone type.",
-//   }),
-//   serialNumber: z.string().min(5, {
-//     message: "Serial number must be at least 5 characters.",
-//   }),
-//   weight: z.string().min(1, {
-//     message: "Weight is required.",
-//   }),
-//   flightPurpose: z.string({
-//     required_error: "Please select a flight purpose.",
-//   }),
-//   flightDescription: z.string().min(10, {
-//     message: "Flight description must be at least 10 characters.",
-//   }),
-//   flightDate: z.date({
-//     required_error: "Flight date is required.",
-//   }),
-//   startTime: z.string().min(1, {
-//     message: "Start time is required.",
-//   }),
-//   endTime: z.string().min(1, {
-//     message: "End time is required.",
-//   }),
-//   location: z.string().min(5, {
-//     message: "Location must be at least 5 characters.",
-//   }),
-//   altitude: z.string().min(1, {
-//     message: "Maximum altitude is required.",
-//   }),
-// })
 
-// MODIFIED CODE WITH AREA-BASED LOCATION AND REFINED SCHEMA:
+// Define the schema for form validation using Zod
 const formSchema = z.object({
   // Drone Information - Keeping original fields with slight modifications
   droneName: z.string().min(2, {
@@ -113,8 +76,9 @@ const formSchema = z.object({
 })
 
 export default function RegisterFlightPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false) // State to manage submission status
+  const [showSuggestions, setShowSuggestions] = useState(false) // State to manage suggestions visibility
+  const { isConnected, address } = useAccount(); // Get wallet connection state
 
   // ORIGINAL CODE
   // const form = useForm<z.infer<typeof formSchema>>({
@@ -134,7 +98,7 @@ export default function RegisterFlightPage() {
 
   // MODIFIED CODE WITH AREA-BASED LOCATION AND REFINED SCHEMA:
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema), // Use Zod for validation
     defaultValues: {
       droneName: "",
       droneModel: "",
@@ -150,82 +114,42 @@ export default function RegisterFlightPage() {
     },
   })
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsSubmitting(true);
-    console.log(values); // Log the collected data
+  // Function to handle form submission
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsSubmitting(true); // Set submitting state to true
+    console.log(values); // Log the collected data for debugging
   
-    const sendToBlockchain = async () => {
-      if (!window.ethereum) {
-        alert("Please install MetaMask!");
-        setIsSubmitting(false);
-        return;
+    // Check if wallet is connected
+    if (!isConnected) {
+      alert("Please connect your wallet first."); // Alert user if wallet is not connected
+      setIsSubmitting(false); // Reset submitting state
+      return;
+    }
+  
+    try {
+      // Make a POST request to the API route to register the flight
+      const response = await fetch('/api/registerFlight', {
+        method: 'POST', // Specify the request method
+        headers: {
+          'Content-Type': 'application/json', // Set content type to JSON
+        },
+        body: JSON.stringify(values), // Send the full form values to the API
+      });
+  
+      const data = await response.json(); // Parse the JSON response
+  
+      // Check if the response indicates an error
+      if (!response.ok) {
+        throw new Error(data.error || 'Error registering flight'); // Throw an error if the response is not OK
       }
   
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner(); // Get the signer
-  
-     // Replace with your smart contract address
-    const contractAddress = "YOUR_CONTRACT_ADDRESS";
-
-    // Define the contract ABI
-    const contractABI: Array<{ 
-      inputs: any[]; 
-      name: string; 
-      outputs: any[]; 
-      stateMutability: string; 
-      type: string; 
-    }> = [
-      // Your contract ABI here
-      {
-        inputs: [
-          { internalType: "string", name: "droneName", type: "string" },
-          { internalType: "string", name: "droneModel", type: "string" },
-          { internalType: "string", name: "serialNumber", type: "string" },
-          { internalType: "string", name: "weight", type: "string" },
-          { internalType: "string", name: "flightPurpose", type: "string" },
-          { internalType: "string", name: "flightDescription", type: "string" },
-          { internalType: "date", name: "flightDate", type: "date" },
-          { internalType: "string", name: "startTime", type: "string" },
-          { internalType: "string", name: "endTime", type: "string" },
-          { internalType: "string", name: "location", type: "string" },
-          { internalType: "string", name: "altitude", type: "string" },
-        ],
-        name: "registerFlight",
-        outputs: [],
-        stateMutability: "nonpayable",
-        type: "function",
-      },
-      // Add other functions/events as needed
-    ];
-
-    const contract = new ethers.Contract(contractAddress, contractABI, signer);
-  
-      try {
-        const tx = await contract.registerFlight(
-          values.droneName,
-          values.droneModel,
-          values.serialNumber,
-          values.weight,
-          values.flightPurpose,
-          values.flightDescription,
-          values.flightDate,
-          values.startTime,
-          values.endTime,
-          values.location,
-          values.altitude
-        );
-  
-        await tx.wait(); // Wait for the transaction to be mined
-        alert("Flight registered successfully!");
-      } catch (error) {
-        console.error("Error registering flight:", error);
-        alert("There was an error registering the flight.");
-      } finally {
-        setIsSubmitting(false);
-      }
-    };
-  
-    sendToBlockchain();
+      alert(data.message); // Show success alert with the message from the response
+    } catch (error) {
+      console.error("Error:", error); // Log any errors that occur
+      alert("There was an error registering the flight."); // Alert user of the error
+    } finally {
+      setIsSubmitting(false); // Reset loading state after the operation
+    }
   }
 
   return (
@@ -636,4 +560,3 @@ export default function RegisterFlightPage() {
     </div>
   )
 }
-

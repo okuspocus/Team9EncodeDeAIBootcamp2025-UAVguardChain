@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, CheckCircle2 } from "lucide-react"
+import { useAccount } from "wagmi"; // Import useAccount from wagmi
 
 export function ComplianceSuggestions() {
   const [loading, setLoading] = useState(true)
+  const { isConnected, address } = useAccount(); // Get wallet connection state
 
   useEffect(() => {
     // Simulate AI suggestions loading
@@ -42,38 +44,44 @@ export function ComplianceSuggestions() {
         <CardDescription>Based on your flight details, here are some compliance recommendations</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <h4 className="font-medium flex items-center gap-2">
-            <AlertCircle className="h-4 w-4 text-amber-500" />
-            Restricted Airspace Alert
-          </h4>
-          <p className="text-sm text-muted-foreground">
-            Your flight location may be near a restricted airspace. Consider checking the local airspace restrictions
-            using the B4UFLY app or a similar service before flying.
-          </p>
-        </div>
+        {isConnected ? (
+          <>
+            <div className="space-y-2">
+              <h4 className="font-medium flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-amber-500" />
+                Restricted Airspace Alert
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                Your flight location may be near a restricted airspace. Consider checking the local airspace restrictions
+                using the B4UFLY app or a similar service before flying.
+              </p>
+            </div>
 
-        <div className="space-y-2">
-          <h4 className="font-medium flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
-            Documentation Recommendation
-          </h4>
-          <p className="text-sm text-muted-foreground">
-            For commercial flights, remember to carry your Remote Pilot Certificate and have your drone registration
-            visible on the aircraft.
-          </p>
-        </div>
+            <div className="space-y-2">
+              <h4 className="font-medium flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                Documentation Recommendation
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                For commercial flights, remember to carry your Remote Pilot Certificate and have your drone registration
+                visible on the aircraft.
+              </p>
+            </div>
 
-        <div className="space-y-2">
-          <h4 className="font-medium flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
-            Weather Considerations
-          </h4>
-          <p className="text-sm text-muted-foreground">
-            Based on your flight date, check weather conditions before flying. Avoid flying in winds exceeding 20mph or
-            during precipitation.
-          </p>
-        </div>
+            <div className="space-y-2">
+              <h4 className="font-medium flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                Weather Considerations
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                Based on your flight date, check weather conditions before flying. Avoid flying in winds exceeding 20mph or
+                during precipitation.
+              </p>
+            </div>
+          </>
+        ) : (
+          <p className="text-red-500">Please connect your wallet to see compliance suggestions.</p>
+        )}
       </CardContent>
     </Card>
   )
