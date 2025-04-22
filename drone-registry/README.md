@@ -1,3 +1,42 @@
+
+
+```
+curl -X POST http://localhost:3000/api/registerFlight \
+  -H "Content-Type: application/json" \
+  -d '{"droneName": "TestDrone"}'
+```
+
+```
+curl -X POST http://localhost:3000/api/registerFlight \
+  -H "Content-Type: application/json" \
+  -d '{"droneName": "12345"}'
+```
+
+or return false with
+```
+curl -X POST http://localhost:3000/api/registerFlight \
+  -H "Content-Type: application/json" \
+  -d '{"droneName": "AlphaDrone"}'
+```
+
+```
+curl -X POST http://localhost:3000/api/registerFlight \
+  -H "Content-Type: application/json" \
+  -d '{
+    "droneName": "TestDrone",
+    "droneModel": "DJI Phantom",
+    "serialNumber": "SN123456",
+    "weight": 1.5,
+    "flightPurpose": "Survey",
+    "flightDescription": "Testing flight",
+    "flightDate": "2025-04-22",
+    "startTime": "10:00",
+    "endTime": "10:30",
+    "location": "Berlin",
+    "altitude": 100
+  }'
+```
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

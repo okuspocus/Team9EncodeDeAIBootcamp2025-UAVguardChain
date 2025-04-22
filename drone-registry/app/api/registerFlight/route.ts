@@ -1,8 +1,18 @@
 // app/api/registerFlight/route.ts
 import { NextResponse } from 'next/server';
 import { ethers } from 'ethers';
+import OpenAI from 'openai';
 
 export async function POST(request: Request) {
+  // Check if the OpenAI API key is set
+  if (!process.env.OPENAI_API_KEY) {
+    return NextResponse.json({ error: 'OpenAI API key is not set. Please set OPENAI_API_KEY in your environment.' }, { status: 500 });
+  }
+
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
   // Parse the incoming JSON request body
   const data = await request.json();
 
@@ -12,63 +22,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Drone name is required' }, { status: 400 });
   }
 
-  // Check if MetaMask is installed
-  if (typeof window === 'undefined' || !window.ethereum) {
-    // If MetaMask is not installed, return a 400 error response
-    return NextResponse.json({ error: 'Please install MetaMask!' }, { status: 400 });
-  }
-
-  // Initialize the Ethereum provider and signer
-  const provider = new ethers.BrowserProvider(window.ethereum);
-  const signer = await provider.getSigner(); // Get the signer for sending transactions
-
-  const contractAddress = "YOUR_CONTRACT_ADDRESS"; // Replace with your contract address
-  const contractABI = [
-    {
-      inputs: [
-        { internalType: "string", name: "droneName", type: "string" },
-        // Add other inputs as needed for the full registration
-      ],
-      name: "registerFlight",
-      outputs: [],
-      stateMutability: "nonpayable",
-      type: "function",
-    },
-  ];
-
-  // Create a contract instance using the address and ABI
-  const contract = new ethers.Contract(contractAddress, contractABI, signer);
-
+  // Use OpenAI to determine if droneName is a number
   try {
-    // Check if it's a full registration or basic registration based on the presence of droneModel
-    if (data.droneModel) {
-      // Full registration
-      const tx = await contract.registerFlight(
-        data.droneName,
-        data.droneModel,
-        data.serialNumber,
-        data.weight,
-        data.flightPurpose,
-        data.flightDescription,
-        data.flightDate,
-        data.startTime,
-        data.endTime,
-        data.location,
-        data.altitude
-      );
-      await tx.wait(); // Wait for the transaction to be mined
-      // Return a success message to the frontend
-      return NextResponse.json({ message: 'Flight registered successfully!' });
-    } else {
-      // Basic registration
-      const tx = await contract.registerFlight(data.droneName);
-      await tx.wait(); // Wait for the transaction to be mined
-      // Return a success message to the frontend
-      return NextResponse.json({ message: 'Flight registered successfully!' });
-    }
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an API validator. Respond only with true if the input is a number, or false if it is not. Do not explain.'
+        },
+        {
+          role: 'user',
+          content: `Is this a number? ${data.droneName}`
+        }
+      ],
+      max_tokens: 5,
+    });
+
+    const aiResponse = completion.choices[0].message.content.trim().toLowerCase();
+    const result = aiResponse === 'true';
+    return NextResponse.json({ result });
   } catch (error) {
-    console.error("Error registering flight:", error);
-    // Return a 500 error response if there was an error during the transaction
-    return NextResponse.json({ error: 'There was an error registering the flight.' }, { status: 500 });
+    console.error('OpenAI API error:', error);
+    return NextResponse.json({ error: 'Failed to validate droneName with OpenAI.' }, { status: 500 });
   }
 }
