@@ -1,0 +1,93 @@
+// File: agent-server/index.ts
+
+import express from 'express'
+import dotenv from 'dotenv'
+import cors from 'cors'
+
+import { ChatOpenAI } from '@langchain/openai'
+import { Tool } from 'langchain/tools'
+import { initializeAgentExecutorWithOptions } from 'langchain/agents'
+
+dotenv.config()
+
+const app = express()
+const port = process.env.PORT || 3010
+
+app.use(cors())
+app.use(express.json())
+
+// Tool: Google Maps MCP
+class GoogleMapsTool extends Tool {
+  name = 'google-maps'
+  description = 'Geocodes a location string into coordinates and address using MCP server.'
+
+  async _call(input: string) {
+    try {
+      const res = await fetch('http://localhost:3002/mcp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'geocode', input })
+      })
+      const data = await res.json() as any
+      return `Lat: ${data.result.lat}, Lng: ${data.result.lng}, Address: ${data.result.formatted_address}`
+    } catch (err: any) {
+      return `Google Maps MCP failed: ${err.message}`
+    }
+  }
+}
+
+// Tool: EVM MCP (now returns transaction data for signing)
+class EvmTool extends Tool {
+  name = 'evm-smart-contract'
+  description = 'Prepares a smart contract transaction through the EVM MCP server (to be signed by the user).'
+
+  async _call(input: string) {
+    try {
+      const res = await fetch('http://localhost:3001/mcp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'contract', input })
+      })
+      const data = await res.json() as any
+
+      if (data.result && data.result.to && data.result.data && data.result.chainId) {
+        return `Prepared transaction:\nTo: ${data.result.to}\nData: ${data.result.data}\nChain ID: ${data.result.chainId}`
+      }
+
+      return data.result || 'EVM MCP did not return valid transaction data.'
+    } catch (err: any) {
+      return `EVM MCP fetch failed: ${err.message}`
+    }
+  }
+}
+
+app.post('/mcp', async (req, res) => {
+  try {
+    const { input } = req.body
+
+    const model = new ChatOpenAI({
+      openAIApiKey: process.env.OPENAI_API_KEY!,
+      temperature: 0.3
+    })
+
+    const tools = [new GoogleMapsTool(), new EvmTool()]
+
+    const executor = await initializeAgentExecutorWithOptions(tools, model, {
+      agentType: 'openai-functions',
+      verbose: true
+    })
+
+    const result = await executor.call({ input })
+
+    res.json({
+      result: result.output || 'No response generated.',
+      tools: result.intermediateSteps?.map((s: any) => s.tool)
+    })
+  } catch (err: any) {
+    res.status(500).json({ error: 'Agent failed', details: err.message })
+  }
+})
+
+app.listen(port, () => {
+  console.log(`✅ MCP Agent Server running at http://localhost:${port}/mcp`)
+})
