@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { MobileMenu } from "@/components/mobile-menu"
 import { WalletConnect } from "@/components/wallet-connect"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useAccount, useDisconnect } from "wagmi"; // Import useAccount and useDisconnect from wagmi for wallet connection
 
 const navItems = [
   { name: "Dashboard", href: "/", icon: BarChart2 },
@@ -18,12 +19,31 @@ const navItems = [
 
 export default function Navbar() {
   const pathname = usePathname()
-  const [connectedAccount, setConnectedAccount] = useState<string | null>(null)
-  const [dropdownOpen, setDropdownOpen] = useState(false) // State for dropdown visibility
+  const { isConnected, address } = useAccount(); // Get wallet connection state
+  const { disconnect } = useDisconnect(); // Get disconnect function
+  const [displayMessage, setDisplayMessage] = useState(""); // State for displaying wallet message
+  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null); // Timer for message display
+  const [dropdownOpen, setDropdownOpen] = useState(false); // State for dropdown visibility
 
-  const handleConnect = (account: string) => {
-    setConnectedAccount(account)
-  }
+  // Effect to handle wallet connection status
+  useEffect(() => {
+    if (isConnected && address) {
+      setDisplayMessage("Wallet connected");
+      const newTimer = setTimeout(() => {
+        setDisplayMessage(`Wallet connected: ${formatAddress(address)}`);
+      }, 3000);
+      setTimer(newTimer);
+    } else {
+      setDisplayMessage(""); // Clear message if not connected
+      if (timer) {
+        clearTimeout(timer); // Clear timer if disconnected
+      }
+    }
+  }, [isConnected, address]);
+
+  const formatAddress = (addr: string) => {
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`; // Format the address
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -71,7 +91,14 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center justify-end space-x-2">
-          <WalletConnect onConnect={handleConnect} connected={!!connectedAccount} />
+          {isConnected ? (
+            <>
+              <div className="text-green-500">{displayMessage}</div> {/* Display wallet message */}
+              <Button onClick={() => disconnect()}>Disconnect</Button> {/* Disconnect button */}
+            </>
+          ) : (
+            <WalletConnect /> // Render WalletConnect without props
+          )}
           <MobileMenu items={navItems} />
         </div>
       </div>

@@ -1,77 +1,47 @@
 // components/wallet-connect.tsx
+
 "use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Wallet, Loader2, CheckCircle2 } from "lucide-react"
-import { ethers } from "ethers"
+// Import necessary Wagmi hooks and UI components
+import { useConnect } from "wagmi"; // Import the useConnect hook
+import { injected } from '@wagmi/connectors'; // Correct import for the injected connector
+import { Button } from "@/components/ui/button"; // Button component
+import { Loader2, Wallet } from "lucide-react"; // Import Loader2 and Wallet from lucide-react
 
-interface WalletConnectProps {
-  onConnect: (account: string) => void; // Ensure this accepts a string argument
-  connected: boolean;
-}
+export function WalletConnect() { // Refactored to take no props
+  // Use the useConnect hook provided by wagmi
+  const { connectors, connect, isPending } = useConnect();
 
-export function WalletConnect({ onConnect, connected }: WalletConnectProps) {
-  const [connecting, setConnecting] = useState(false)
-
-  const handleConnect = async () => {
-    setConnecting(true)
-    if (window.ethereum) {
-      const provider = new ethers.BrowserProvider(window.ethereum) // Correct provider initialization
-      try {
-        const accounts = await provider.send("eth_requestAccounts", [])
-        onConnect(accounts[0]); // Pass the connected account to the parent
-      } catch (error) {
-        console.error("Error connecting to wallet:", error) // Error handling
-      }
-    } else {
-      alert("Please install MetaMask!")
-    }
-    setConnecting(false)
-  }
-
-  if (connected) {
-    return (
-      <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-green-100 dark:bg-green-900 rounded-full p-2">
-              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <p className="font-medium text-green-700 dark:text-green-400">Wallet Connected</p>
-              <p className="text-sm text-muted-foreground">Connected Account</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
+  // Find the injected connector (e.g., MetaMask, WalletConnect browser extension)
+  const injectedConnector = connectors.find(c => c.name === 'Injected'); // Use the connector's name instead of id
 
   return (
-    <Card>
-      <CardContent className="p-6 flex flex-col items-center justify-center gap-4">
-        <div className="bg-primary/10 rounded-full p-4">
-          <Wallet className="h-8 w-8 text-primary" />
-        </div>
-        <div className="text-center">
-          <h3 className="font-medium text-lg">Connect Your Wallet</h3>
-        </div>
-        <Button className="w-full mt-2" onClick={handleConnect} disabled={connecting}>
-          {connecting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Connecting...
-            </>
-          ) : (
-            <>
-              <Wallet className="mr-2 h-4 w-4" />
-              Connect Wallet
-            </>
-          )}
-        </Button>
-      </CardContent>
-    </Card>
-  )
+    <Button
+      onClick={() => {
+        // Call the connect function with the desired connector
+        if (injectedConnector) {
+          connect({ connector: injectedConnector });
+        } else {
+          // Handle case where injected connector is not found (e.g., no MetaMask)
+          alert("Injected wallet not found. Please install MetaMask or a similar extension.");
+        }
+      }}
+      // Disable button while connection is pending
+      disabled={isPending}
+      className="flex items-center space-x-2" // Use your styling classes
+    >
+      {/* Show loading spinner if connection is pending */}
+      {isPending ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Connecting...
+        </>
+      ) : (
+        <>
+          <Wallet className="mr-2 h-4 w-4" />
+          Connect Wallet
+        </>
+      )}
+    </Button>
+  );
 }

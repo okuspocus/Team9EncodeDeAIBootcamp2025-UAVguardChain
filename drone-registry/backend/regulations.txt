@@ -1,0 +1,48 @@
+=== GENERAL DRONE REGULATIONS ===
+1. All drone pilots must be registered with the National Aviation Authority (NAA).
+2. Drone flights must not exceed 400 feet (120 meters) in altitude.
+3. Visual Line of Sight (VLOS) must be maintained at all times during flight.
+4. Drones must not be flown over crowds, moving vehicles, or private property without permission.
+5. Night flights are prohibited unless special authorization is granted.
+6. All drone flights must be registered with the Drone Flight Management System before takeoff.
+
+=== DRONE CATEGORIES ===
+- Class A (Under 250g): Toy and hobby drones. No registration required for personal use.
+- Class B (250g - 2kg): Requires pilot registration and basic safety certification.
+- Class C (Above 2kg): Requires commercial drone license and flight insurance.
+
+=== NO-FLY ZONES (NFZ) ===
+- 5km radius around airports (e.g., MMA - Murtala Muhammed Airport, LOS - Lagos Airport).
+- Government buildings and military zones.
+- National parks and protected wildlife zones.
+- School premises and hospitals without prior notice.
+- Central Business Districts (CBD) during weekdays 8AM–6PM.
+
+=== TIME RESTRICTIONS ===
+- Flights only permitted between 6:00AM and 7:30PM.
+- No flights during severe weather conditions (wind speed > 25km/h or heavy rain).
+- Weekend flights in residential zones allowed only between 8:00AM and 6:00PM.
+
+=== INSURANCE REQUIREMENTS ===
+- Mandatory for Class C drones and all commercial operations.
+- Insurance must cover third-party liability, property damage, and personal injury.
+- Pilots must submit insurance ID before approval of commercial flight plans.
+
+=== FLIGHT PLAN REQUIREMENTS ===
+All flight plans must include:
+- Drone make and model.
+- Date, time, and location of flight.
+- Duration and purpose of flight.
+- Emergency landing protocol.
+
+=== VIOLATIONS & PENALTIES ===
+- Unauthorized flights in NFZ: ₦250,000 fine and 3-month suspension.
+- Operating without registration or insurance: ₦150,000 fine.
+- Flying beyond visual range or at night without clearance: ₦100,000 fine.
+- Repeated offenses may lead to pilot license revocation.
+
+=== NOTES ===
+- Always check local advisories for temporary flight restrictions.
+- Updated drone regulation bulletins are issued monthly by the NAA.
+
+Last updated: February 2025

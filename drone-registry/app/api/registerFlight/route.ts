@@ -11,6 +11,11 @@ export async function POST(request: Request) {
     // If droneName is missing, return a 400 error response
     return NextResponse.json({ error: 'Drone name is required' }, { status: 400 });
   }
+  if (data.droneModel && !data.serialNumber) {
+    // If droneModel is provided but serialNumber is missing, return a 400 error response
+    return NextResponse.json({ error: 'Serial number is required for full registration' }, { status: 400 });
+  }
+  // Add more validations as needed...
 
   // Check if MetaMask is installed
   if (typeof window === 'undefined' || !window.ethereum) {
@@ -40,10 +45,11 @@ export async function POST(request: Request) {
   const contract = new ethers.Contract(contractAddress, contractABI, signer);
 
   try {
+    let tx;
     // Check if it's a full registration or basic registration based on the presence of droneModel
     if (data.droneModel) {
       // Full registration
-      const tx = await contract.registerFlight(
+      tx = await contract.registerFlight(
         data.droneName,
         data.droneModel,
         data.serialNumber,
@@ -56,19 +62,19 @@ export async function POST(request: Request) {
         data.location,
         data.altitude
       );
-      await tx.wait(); // Wait for the transaction to be mined
-      // Return a success message to the frontend
-      return NextResponse.json({ message: 'Flight registered successfully!' });
     } else {
       // Basic registration
-      const tx = await contract.registerFlight(data.droneName);
-      await tx.wait(); // Wait for the transaction to be mined
-      // Return a success message to the frontend
-      return NextResponse.json({ message: 'Flight registered successfully!' });
+      tx = await contract.registerFlight(data.droneName);
     }
+    await tx.wait(); // Wait for the transaction to be mined
+    console.log("Flight registered successfully:", tx);
+    // Return a success message to the frontend
+    return NextResponse.json({ message: 'Flight registered successfully!' });
   } catch (error) {
     console.error("Error registering flight:", error);
+    // Type assertion to handle the error as an instance of Error
+    const errorMessage = (error as Error).message || 'There was an error registering the flight.';
     // Return a 500 error response if there was an error during the transaction
-    return NextResponse.json({ error: 'There was an error registering the flight.' }, { status: 500 });
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

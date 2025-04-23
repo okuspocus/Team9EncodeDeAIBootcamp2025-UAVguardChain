@@ -19,7 +19,6 @@ import { cn } from "@/lib/utils"
 import { FileUploader } from "@/components/file-uploader"
 import { ClaimStatusTracker } from "@/components/claim-status-tracker"
 import { ethers } from "ethers"; // Import ethers
-import { WalletConnect } from "@/components/wallet-connect"; // Import WalletConnect
 import { useAccount } from "wagmi"; // Import useAccount from wagmi for wallet connection
 
 const formSchema = z.object({
@@ -52,7 +51,6 @@ const formSchema = z.object({
 export default function FileClaimPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [filesUploaded, setFilesUploaded] = useState(false)
-  const [walletConnected, setWalletConnected] = useState(false); // State for wallet connection
   const { isConnected } = useAccount(); // Get wallet connection state
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -72,7 +70,7 @@ export default function FileClaimPage() {
     console.log(values)
 
     // Check if wallet is connected
-    if (!walletConnected) {
+    if (!isConnected) {
       alert("Please connect your wallet first.")
       setIsSubmitting(false)
       return
@@ -142,8 +140,6 @@ export default function FileClaimPage() {
         <h1 className="text-3xl font-bold tracking-tight">File a Claim</h1>
         <p className="text-muted-foreground">Submit an insurance claim for your drone incident</p>
       </div>
-
-      <WalletConnect onConnect={() => setWalletConnected(true)} connected={walletConnected} /> {/* WalletConnect component */}
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-6">
