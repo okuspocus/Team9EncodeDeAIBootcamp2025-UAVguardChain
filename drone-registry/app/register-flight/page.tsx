@@ -38,6 +38,7 @@ const formSchema = z.object({
 export default function RegisterFlightPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [validationSuggestions, setValidationSuggestions] = useState<string | null>(null); // State for validation suggestions
   const { isConnected } = useAccount(); // Get wallet connection state
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -77,8 +78,18 @@ export default function RegisterFlightPage() {
       const validationData = await validationResponse.json();
 
       // Check if validation returned any errors
+      console.log(validationData);
       if (!validationResponse.ok) {
         throw new Error(validationData.error || 'Validation failed');
+      }
+
+      // Set validation suggestions if provided
+      if (validationData.result) {
+        setValidationSuggestions(validationData.result); // Assuming result contains suggestions
+        setShowSuggestions(true);
+      } else {
+        setValidationSuggestions(null);
+        setShowSuggestions(false);
       }
 
       // Proceed to register the flight if validation is successful
@@ -387,7 +398,9 @@ export default function RegisterFlightPage() {
         </div>
 
         <div className="space-y-6">
-          {showSuggestions && <ComplianceSuggestions />}
+          {showSuggestions && validationSuggestions && ( // Conditionally render suggestions
+            <ComplianceSuggestions suggestions={validationSuggestions} />
+          )}
 
           <Card>
             <CardHeader>

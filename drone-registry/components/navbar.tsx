@@ -45,6 +45,10 @@ export default function Navbar() {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`; // Format the address
   };
 
+  const handleDropdownSelect = () => {
+    setDropdownOpen(false); // Close the dropdown when an option is selected
+  };
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center">
@@ -79,10 +83,18 @@ export default function Navbar() {
             </Button>
             {dropdownOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white border rounded-md shadow-lg z-10">
-                <Link href="/register-flight/basic" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <Link 
+                  href="/register-flight/basic" 
+                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={handleDropdownSelect} // Close dropdown on selection
+                >
                   Basic Registration
                 </Link>
-                <Link href="/register-flight" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <Link 
+                  href="/register-flight" 
+                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={handleDropdownSelect} // Close dropdown on selection
+                >
                   Full Registration
                 </Link>
               </div>
