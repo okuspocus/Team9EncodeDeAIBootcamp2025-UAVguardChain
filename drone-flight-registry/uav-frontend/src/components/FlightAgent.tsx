@@ -63,13 +63,13 @@ export default function FlightAgent() {
           });
         }
       } else {
-        setMessages(prev => [...prev, '🤖 No se recibió respuesta del agente.']);
+        setMessages(prev => [...prev, '🤖 No answer from the agent.']);
       }
 
       setTools(data.mcpConnections || []);
     } catch (error) {
-      console.error('Error al comunicarse con el agente:', error);
-      setMessages(prev => [...prev, '🤖 Ocurrió un error al procesar tu solicitud.']);
+      console.error('Error communicating with the agent:', error);
+      setMessages(prev => [...prev, '🤖 An error ocurred in the process.']);
     } finally {
       setLoading(false);
     }
@@ -106,7 +106,7 @@ export default function FlightAgent() {
 
   return (
     <div className="max-w-xl mx-auto p-4 border rounded-xl shadow">
-      <h2 className="text-xl font-bold mb-2">Asistente AI – Registro de Vuelo de Drones</h2>
+      <h2 className="text-xl font-bold mb-2">AI Assistant – Drone Flight Registry</h2>
 
       <div className="mb-4">
         <ConnectButton />
@@ -119,7 +119,7 @@ export default function FlightAgent() {
           </div>
         ))}
         {loading && (
-          <div className="italic text-gray-500 animate-pulse">🤖 Escribiendo...</div>
+          <div className="italic text-gray-500 animate-pulse">🤖 Thinking...</div>
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -129,14 +129,14 @@ export default function FlightAgent() {
         value={input}
         onChange={e => setInput(e.target.value)}
         onKeyDown={e => e.key === 'Enter' && sendMessage()}
-        placeholder="Describe tu vuelo, por ejemplo, 'Registrar vuelo con dron 42 en 41.38, 2.17'"
+        placeholder="Describe your flight providing answers"
       />
       <button
         className="bg-blue-600 text-white px-4 py-2 rounded w-full"
         onClick={sendMessage}
         disabled={loading}
       >
-        {loading ? 'Procesando...' : 'Enviar'}
+        {loading ? 'Processing...' : 'Send'}
       </button>
 
       {clientReady && preparedTx && (
@@ -149,7 +149,7 @@ export default function FlightAgent() {
       )}
 
       <div className="mt-4 text-sm text-gray-500">
-        🔌 Herramientas MCP activas: {tools.length > 0 ? tools.join(', ') : 'ninguna'}
+        
       </div>
     </div>
   );

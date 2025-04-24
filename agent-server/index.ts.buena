@@ -1,0 +1,174 @@
+// File: agent-server/index.ts
+
+import express from 'express';
+import dotenv from 'dotenv';
+import cors from 'cors';
+
+import { ChatOpenAI } from '@langchain/openai';
+import { DynamicStructuredTool } from 'langchain/tools';
+import { AgentExecutor, createOpenAIFunctionsAgent } from 'langchain/agents';
+import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts';
+import { z } from 'zod';
+import { ethers } from 'ethers';
+
+dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 3010;
+
+app.use(cors());
+app.use(express.json());
+
+class GoogleMapsTool extends DynamicStructuredTool {
+  constructor() {
+    super({
+      name: 'geocode_location',
+      description: 'Use this tool to convert a location name to coordinates (lat/lon).',
+      schema: z.object({
+        location: z.string().describe('The name of the location to geocode')
+      }),
+      async func({ location }: { location: string }) {
+        console.log(`📍 [TOOL] geocode_location called with location: "${location}"`);
+        try {
+          const res = await fetch('http://localhost:3002/mcp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'geocode', input: location })
+          });
+
+          const data = await res.json();
+          console.log('📦 [TOOL] geocode_location response:', data);
+
+          if (data.isError || !data.result) {
+            return `Google Maps MCP error: ${data.details || 'Unknown error'}`;
+          }
+
+          return JSON.stringify({
+            drone_location: {
+              lat: data.result.lat,
+              lng: data.result.lng,
+              formatted_address: data.result.formatted_address
+            }
+          });
+        } catch (err: any) {
+          return `Google Maps MCP failed: ${err.message}`;
+        }
+      }
+    });
+  }
+}
+
+class EvmTool extends DynamicStructuredTool {
+  constructor() {
+    super({
+      name: 'evm-smart-contract',
+      description: 'Use this tool to prepare and send a smart contract transaction when you have the drone ID and a valid lat/lon pair.',
+      schema: z.object({
+        input: z.string().describe('JSON-encoded input string with drone ID and coordinates')
+      }),
+      async func({ input }: { input: string }) {
+        console.log(`🛰️ [TOOL] evm-smart-contract called with input: ${input}`);
+        try {
+          const parsed = JSON.parse(input);
+          const { droneID, latitude, longitude } = parsed;
+
+          const provider = new ethers.JsonRpcProvider(process.env.RPC_URL!);
+          const wallet = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
+
+          const contractAddress = process.env.CONTRACT_ADDRESS!;
+          const abi = [
+            "function registerFlight(uint256 droneID, int256 lat, int256 lon) public"
+          ];
+
+          const contract = new ethers.Contract(contractAddress, abi, wallet);
+          const tx = await contract.registerFlight(
+            BigInt(droneID),
+            BigInt(Math.round(latitude * 1e6)),
+            BigInt(Math.round(longitude * 1e6))
+          );
+
+          const receipt = await tx.wait();
+
+          console.log(`✅ Transaction sent. Hash: ${tx.hash}`);
+
+          return `Transaction sent successfully! Hash: ${tx.hash}`;
+        } catch (err: any) {
+          console.error('❌ EVM MCP error:', err);
+          return `EVM MCP error: ${err.message}`;
+        }
+      }
+    });
+  }
+}
+
+app.post('/mcp', async (req, res) => {
+  try {
+    const { input, chat_history } = req.body;
+    console.log('\n🚀 New request received:', { input, chat_history });
+
+    const model = new ChatOpenAI({
+      openAIApiKey: process.env.OPENAI_API_KEY!,
+      temperature: 0.3,
+      modelName: 'gpt-3.5-turbo-0125'
+    });
+
+    const tools = [new GoogleMapsTool(), new EvmTool()];
+
+    const prompt = ChatPromptTemplate.fromMessages([
+      [
+        'system',
+        `You are UAV-GPT, a polite and focused assistant whose only job is to help users register drone flights on the blockchain.
+
+Start every conversation with this greeting (unless flight data was already provided):
+"Welcome to the Drone Flight Registry. I will help you register your drone flight on the blockchain."
+
+You must collect the following information:
+1. Drone ID (a number)
+2. Drone Model (a short name)
+3. Flight Location (either coordinates or a location name to be geocoded)
+
+For each step:
+- Confirm the user's input.
+- Wait for each value before continuing.
+- When the user provides a location name (like "Seville, Spain" or "Toledo"), you MUST call the geocode_location tool immediately using the string they provided as input.
+- When you have the Drone ID, Drone Model, and geocoded coordinates, you MUST call evm-smart-contract immediately. Do not ask for confirmation if all the information is already available.
+
+If the user asks anything unrelated, respond:
+"Sorry, I can only assist with drone flight registration."
+
+Always stay in character.`
+      ],
+      new MessagesPlaceholder('chat_history'),
+      ['human', '{input}'],
+      new MessagesPlaceholder('agent_scratchpad')
+    ]);
+
+    const agent = await createOpenAIFunctionsAgent({
+      llm: model,
+      tools,
+      prompt
+    });
+
+    const executor = new AgentExecutor({
+      agent,
+      tools,
+      verbose: true
+    });
+
+    const result = await executor.invoke({ input, chat_history: chat_history || [] });
+    console.log('✅ Agent final output:', result);
+
+    res.json({
+      result: result?.output || 'No response generated.',
+      tools: result?.intermediateSteps?.map((s: any) => s.tool) || []
+    });
+  } catch (err: any) {
+    console.error('❌ Agent failed:', err);
+    res.status(500).json({ error: 'Agent failed', details: err.message });
+  }
+});
+
+app.listen(port, () => {
+  console.log(`✅ MCP Agent Server running at http://localhost:${port}/mcp`);
+});
+
