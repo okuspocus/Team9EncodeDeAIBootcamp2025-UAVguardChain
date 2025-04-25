@@ -97,18 +97,20 @@ contract DroneRegistry {
 }
 
 */
-I will be explaining this project in details that is the smart contract
-1 we have the license Identifier
-2 We have our state variable which this allows users to access it
-3 Then we have our our User defined variable event that is used to be able call out the value emit in to regulate the movement in the smart contact or what the Engineer is doing
+I will be explaining this project in details, that is the smart contract
+1. We have the license Identifier
+2 We have our state variable, which allows users to access it
+3 Then we have our user-defined variable event that is used to be able to call out the value emitted to regulate the movement in the smart contract or what the Engineer is doing
 //  event RegisteredFlight(uint256 indexed droneId, //address indexed registrant);
-6 Then to create a constructor that is  called only one for the owner
-7 Then the function that we called a local variable that was assigned to a value  
+6    Then, to create a constructor that is  called only once for the owner
+7   Then the function that we called a local variable was assigned to a value
+
+   
 //  function registerFlight() public {
   //      droneId += 1;
         emit RegisteredFlight(droneId, msg.sender);
   //  }
-  Then we have to emit to tell the user that will be using the Dapp that we have only the droneID and the him/her as the owner.
+  Then, we have to emit to tell the user who will be using the Dapp that we have only the droneID and him/her as the owner.
 
 
 
