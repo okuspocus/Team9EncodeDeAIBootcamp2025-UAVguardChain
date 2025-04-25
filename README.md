@@ -76,6 +76,38 @@ Architecture:
                              | Claims Smart        |   | Transaction Confirmation |
                              | Contract (Solidity) |   | (Blockchain interaction) |
                              +---------------------+   +-------------------------+
+/*
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract DroneRegistry {
+    uint256 public droneId;
+
+    event RegisteredFlight(uint256 indexed droneId, address indexed registrant);
+
+    constructor() {
+        droneId = 0;
+    }
+
+    function registerFlight() public {
+        droneId += 1;
+        emit RegisteredFlight(droneId, msg.sender);
+    }
+}
+
+*/
+I will be explaining this project in details that is the smart contract
+1 we have the license Identifier
+2 We have our state variable which this allows users to access it
+3 Then we have our our User defined variable event that is used to be able call out the value emit in to regulate the movement in the smart contact or what the Engineer is doing
+//  event RegisteredFlight(uint256 indexed droneId, //address indexed registrant);
+6 Then to create a constructor that is  called only one for the owner
+7 Then the function that we called a local variable that was assigned to a value  
+//  function registerFlight() public {
+  //      droneId += 1;
+        emit RegisteredFlight(droneId, msg.sender);
+  //  }
+  Then we have to emit to tell the user that will be using the Dapp that we have only the droneID and the him/her as the owner.
 
 
 
