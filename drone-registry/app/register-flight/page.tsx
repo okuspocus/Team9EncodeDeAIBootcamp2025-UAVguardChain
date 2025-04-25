@@ -28,7 +28,10 @@ const formSchema = z.object({
   weight: z.string().min(1, { message: "Weight is required." }),
   flightPurpose: z.string({ required_error: "Please select a flight purpose." }),
   flightDescription: z.string().min(10, { message: "Flight description must be at least 10 characters." }),
-  flightDate: z.date({ required_error: "Flight date is required." }),
+  flightDate: z.string().refine((date) => {
+    const parsedDate = new Date(date);
+    return !isNaN(parsedDate.getTime()); // Ensure it's a valid date
+  }, { message: "Flight date must be a valid date." }),
   startTime: z.string().min(1, { message: "Start time is required." }),
   endTime: z.string().min(1, { message: "End time is required." }),
   location: z.string().min(5, { message: "Location must be at least 5 characters." }),
@@ -53,20 +56,22 @@ export default function RegisterFlightPage() {
       endTime: "",
       location: "",
       altitude: "",
+      flightDate: "", // Ensure flightDate is included
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
-    console.log(values); // Log the collected data
-
+    console.log("Form Values:", values); // Log the collected data
+    console.log("Validation Errors:", form.formState.errors); // Log validation errors
+  
     // Check if wallet is connected
     if (!isConnected) {
       alert("Please connect your wallet first.");
       setIsSubmitting(false);
       return;
     }
-
+  
     try {
       // Validate flight data using the validation API
       const validationResponse = await fetch('/api/validate-flight', {
@@ -74,15 +79,15 @@ export default function RegisterFlightPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       });
-
+  
       const validationData = await validationResponse.json();
-
+  
       // Check if validation returned any errors
-      console.log(validationData);
+      console.log("Validation Data:", validationData); // Log validation response
       if (!validationResponse.ok) {
         throw new Error(validationData.error || 'Validation failed');
       }
-
+  
       // Set validation suggestions if provided
       if (validationData.result) {
         setValidationSuggestions(validationData.result); // Assuming result contains suggestions
@@ -91,20 +96,20 @@ export default function RegisterFlightPage() {
         setValidationSuggestions(null);
         setShowSuggestions(false);
       }
-
+  
       // Proceed to register the flight if validation is successful
       const response = await fetch('/api/registerFlight', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       });
-
+  
       const data = await response.json();
-
+  
       if (!response.ok) {
         throw new Error(data.error || 'Error registering flight');
       }
-
+  
       alert(data.message); // Show success alert
     } catch (error) {
       console.error("Error:", error);
@@ -299,7 +304,7 @@ export default function RegisterFlightPage() {
                                     !field.value && "text-muted-foreground",
                                   )}
                                 >
-                                  {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                  {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
                                   <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                 </Button>
                               </FormControl>
@@ -307,8 +312,14 @@ export default function RegisterFlightPage() {
                             <PopoverContent className="w-auto p-0" align="start">
                               <Calendar
                                 mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
+                                selected={field.value ? new Date(field.value) : undefined} // Convert to Date object
+                                onSelect={(date) => {
+                                  if (date) {
+                                    field.onChange(date.toISOString().split('T')[0]); // Set date in YYYY-MM-DD format
+                                  } else {
+                                    field.onChange(""); // Optionally clear the field if no date is selected
+                                  }
+                                }}
                                 disabled={(date) => date < new Date()}
                                 initialFocus
                               />

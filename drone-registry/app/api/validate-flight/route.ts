@@ -35,14 +35,6 @@ export async function POST(request: Request) {
       console.log("Raw Python stdout:", output); // Log raw standard output
       console.error("Raw Python stderr:", errorOutput); // Log raw standard error output
 
-      // Check for non-zero exit code or critical error output
-      if (code !== 0) {
-        console.error("Python script exited with a non-zero code.");
-        if (errorOutput && !errorOutput.includes("Script finished successfully.")) {
-          return resolve(NextResponse.json({ error: 'Error validating flight data.' }, { status: 500 }));
-        }
-      }
-
       try {
         // Attempt to parse the standard output as JSON
         console.log("Attempting to parse Python stdout as JSON...");
@@ -51,25 +43,33 @@ export async function POST(request: Request) {
 
         // Check if the parsed JSON contains an answer field
         if (parsed && typeof parsed === 'object' && parsed.answer !== undefined) {
-          console.log("Parsed output contains 'answer'. Resolving with success.");
-          return resolve(NextResponse.json({ result: parsed.answer }));
+          console.warn("Warning: Python process exited with a non-zero code:", code);
+          return resolve(NextResponse.json({ result: parsed.answer })); // Return success with answer
         }
 
         // Check if the parsed JSON contains an error field
         if (parsed && typeof parsed === 'object' && parsed.error !== undefined) {
           console.warn("Parsed output contains 'error'. Resolving with application error (200 OK).", parsed.error);
-          return resolve(NextResponse.json({ error: parsed.error }, { status: 200 }));
+          return resolve(NextResponse.json({ error: parsed.error }, { status: 200 })); // Return error with 200 OK
         }
 
         // If the output does not contain the expected fields, return a generic error
         console.error("Parsed JSON output has unexpected format (neither 'answer' nor 'error' found).");
-        return resolve(NextResponse.json({ error: 'Unexpected response format from validation script.' }, { status: 500 }));
+        if (code !== 0) {
+          return resolve(NextResponse.json({ error: 'Unexpected response format from validation script.' }, { status: 500 })); // Return 500 error
+        }
       } catch (e) {
         // Log the error if JSON parsing fails
         console.error("Failed to parse Python output as JSON:", e);
         console.error("Output that caused parsing failure:", output); // Log the problematic output
-        return resolve(NextResponse.json({ error: "Failed to parse Python output." }, { status: 500 }));
+        if (code !== 0) {
+          return resolve(NextResponse.json({ error: "Failed to parse Python output." }, { status: 500 })); // Return 500 error
+        }
       }
+
+      // If we reach here, it means we have a non-zero exit code without a clear error
+      console.error("Python script exited with a non-zero code without a clear error.");
+      return resolve(NextResponse.json({ error: 'Unexpected error during validation.' }, { status: 500 })); // Return 500 error
     });
 
     // Send flight data via stdin to the Python script

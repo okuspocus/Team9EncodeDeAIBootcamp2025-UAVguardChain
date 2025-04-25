@@ -13,6 +13,18 @@ interface ComplianceSuggestionsProps {
 
 export function ComplianceSuggestions({ suggestions }: ComplianceSuggestionsProps) {
   const { isConnected } = useAccount(); // Get wallet connection state
+  const [formattedSuggestions, setFormattedSuggestions] = useState<string[]>([]); // State for formatted suggestions
+
+  useEffect(() => {
+    // Process the suggestions string to create an array of formatted suggestions
+    const processSuggestions = (suggestions: string) => {
+      // Split the suggestions by newlines or numbered patterns
+      const splitSuggestions = suggestions.split(/\n|(?=\d+\.\s)/).map(s => s.trim()).filter(Boolean);
+      setFormattedSuggestions(splitSuggestions);
+    };
+
+    processSuggestions(suggestions); // Call the processing function
+  }, [suggestions]);
 
   return (
     <Card className="border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-900">
@@ -26,7 +38,14 @@ export function ComplianceSuggestions({ suggestions }: ComplianceSuggestionsProp
       <CardContent className="space-y-4">
         {isConnected ? (
           <div className="text-sm text-muted-foreground">
-            {suggestions} {/* Display the suggestions */}
+            <ul>
+              {formattedSuggestions.map((suggestion, index) => (
+                <li key={index} className="mb-2">
+                  {/* Render each suggestion, applying any necessary formatting */}
+                  {suggestion}
+                </li>
+              ))}
+            </ul>
           </div>
         ) : (
           <p className="text-red-500">Please connect your wallet to see compliance suggestions.</p>
