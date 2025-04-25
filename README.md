@@ -76,6 +76,7 @@ Architecture:
                              | Claims Smart        |   | Transaction Confirmation |
                              | Contract (Solidity) |   | (Blockchain interaction) |
                              +---------------------+   +-------------------------+
+More details to the smart contracts
 /*
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
