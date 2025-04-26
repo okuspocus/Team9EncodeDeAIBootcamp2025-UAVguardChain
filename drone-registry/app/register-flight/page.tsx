@@ -1,84 +1,49 @@
-// app/register-flight/page.tsx
-"use client"
+"use client";
 
-import { useState } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { format } from "date-fns"
-import { CalendarIcon, DrillIcon as Drone, Loader2, MapPin, FileText, Clock } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { cn } from "@/lib/utils"
-import { ComplianceSuggestions } from "@/components/compliance-suggestions"
-import { ethers } from "ethers"; // Import ethers for blockchain interaction
+import { useEffect, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { format } from "date-fns";
+import { CalendarIcon, DrillIcon as Drone, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
+import { ComplianceSuggestions } from "@/components/compliance-suggestions";
 import { useAccount } from "wagmi"; // Import useAccount from wagmi for wallet connection
 
 
 // Define the schema for form validation using Zod
 const formSchema = z.object({
-  // Drone Information - Keeping original fields with slight modifications
-  droneName: z.string().min(2, {
-    message: "Drone name must be at least 2 characters.",
-  }),
-  droneModel: z.string().min(2, {
-    message: "Drone model must be at least 2 characters.",
-  }),
-  droneType: z.string({
-    required_error: "Please select a drone type.",
-  }),
-  serialNumber: z.string().min(5, {
-    message: "Serial number must be at least 5 characters.",
-  }),
-  weight: z.string().min(1, {
-    message: "Weight in kilograms is required.",
-  }),
-  
-  // Flight Information - Keeping original fields
-  flightPurpose: z.string({
-    required_error: "Please select a flight purpose.",
-  }),
-  flightDescription: z.string().min(10, {
-    message: "Flight description must be at least 10 characters.",
-  }),
-  flightDate: z.date({
-    required_error: "Flight date is required.",
-  }),
-  startTime: z.string().min(1, {
-    message: "Start time is required.",
-  }),
-  endTime: z.string().min(1, {
-    message: "End time is required.",
-  }),
-  
-  // New field for day/night operation
-  dayNightOperation: z.string({
-    required_error: "Please specify day or night operation.",
-  }),
-  
-  // Replacing location and altitude with area-based approach
-  flightAreaCenter: z.string().min(5, {
-    message: "Center coordinates must be at least 5 characters.",
-  }),
-  flightAreaRadius: z.string().min(1, {
-    message: "Flight area radius in meters is required.",
-  }),
-  flightAreaMaxHeight: z.string().min(1, {
-    message: "Maximum flight height in feet is required.",
-  }),
-})
+  droneName: z.string().min(2, { message: "Drone name must be at least 2 characters." }),
+  droneModel: z.string().min(2, { message: "Drone model must be at least 2 characters." }),
+  droneType: z.string({ required_error: "Please select a drone type." }),
+  serialNumber: z.string().min(5, { message: "Serial number must be at least 5 characters." }),
+  weight: z.string().min(1, { message: "Weight is required." }),
+  flightPurpose: z.string({ required_error: "Please select a flight purpose." }),
+  flightDescription: z.string().min(10, { message: "Flight description must be at least 10 characters." }),
+  flightDate: z.string().refine((date) => {
+    const parsedDate = new Date(date);
+    return !isNaN(parsedDate.getTime()); // Ensure it's a valid date
+  }, { message: "Flight date must be a valid date." }),
+  startTime: z.string().min(1, { message: "Start time is required." }),
+  endTime: z.string().min(1, { message: "End time is required." }),
+  location: z.string().min(5, { message: "Location must be at least 5 characters." }),
+  altitude: z.string().min(1, { message: "Maximum altitude is required." }),
+});
 
 export default function RegisterFlightPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false) // State to manage submission status
-  const [showSuggestions, setShowSuggestions] = useState(false) // State to manage suggestions visibility
-  const { isConnected, address } = useAccount(); // Get wallet connection state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [validationSuggestions, setValidationSuggestions] = useState<string | null>(null); // State for validation suggestions
+  const { isConnected } = useAccount(); // Get wallet connection state
 
   // ORIGINAL CODE
   // const form = useForm<z.infer<typeof formSchema>>({
@@ -98,7 +63,7 @@ export default function RegisterFlightPage() {
 
   // MODIFIED CODE WITH AREA-BASED LOCATION AND REFINED SCHEMA:
   const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema), // Use Zod for validation
+    resolver: zodResolver(formSchema),
     defaultValues: {
       droneName: "",
       droneModel: "",
@@ -107,48 +72,68 @@ export default function RegisterFlightPage() {
       flightDescription: "",
       startTime: "",
       endTime: "",
-      dayNightOperation: "day", // Default to day operation
-      flightAreaCenter: "",
-      flightAreaRadius: "",
-      flightAreaMaxHeight: "400", // Default to 400 feet (standard maximum)
+      location: "",
+      altitude: "",
+      flightDate: "", // Ensure flightDate is included
     },
-  })
+  });
 
-  // Function to handle form submission
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsSubmitting(true); // Set submitting state to true
-    console.log(values); // Log the collected data for debugging
+    setIsSubmitting(true);
+    console.log("Form Values:", values); // Log the collected data
+    console.log("Validation Errors:", form.formState.errors); // Log validation errors
   
     // Check if wallet is connected
     if (!isConnected) {
-      alert("Please connect your wallet first."); // Alert user if wallet is not connected
-      setIsSubmitting(false); // Reset submitting state
+      alert("Please connect your wallet first.");
+      setIsSubmitting(false);
       return;
     }
   
     try {
-      // Make a POST request to the API route to register the flight
-      const response = await fetch('/api/registerFlight', {
-        method: 'POST', // Specify the request method
-        headers: {
-          'Content-Type': 'application/json', // Set content type to JSON
-        },
-        body: JSON.stringify(values), // Send the full form values to the API
+      // Validate flight data using the validation API
+      const validationResponse = await fetch('/api/validate-flight', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
       });
   
-      const data = await response.json(); // Parse the JSON response
+      const validationData = await validationResponse.json();
   
-      // Check if the response indicates an error
-      if (!response.ok) {
-        throw new Error(data.error || 'Error registering flight'); // Throw an error if the response is not OK
+      // Check if validation returned any errors
+      console.log("Validation Data:", validationData); // Log validation response
+      if (!validationResponse.ok) {
+        throw new Error(validationData.error || 'Validation failed');
       }
   
-      alert(data.message); // Show success alert with the message from the response
+      // Set validation suggestions if provided
+      if (validationData.result) {
+        setValidationSuggestions(validationData.result); // Assuming result contains suggestions
+        setShowSuggestions(true);
+      } else {
+        setValidationSuggestions(null);
+        setShowSuggestions(false);
+      }
+  
+      // Proceed to register the flight if validation is successful
+      const response = await fetch('/api/registerFlight', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
+  
+      const data = await response.json();
+  
+      if (!response.ok) {
+        throw new Error(data.error || 'Error registering flight');
+      }
+  
+      alert(data.message); // Show success alert
     } catch (error) {
-      console.error("Error:", error); // Log any errors that occur
-      alert("There was an error registering the flight."); // Alert user of the error
+      console.error("Error:", error);
+      alert("There was an error processing your request."); // Alert user of the error
     } finally {
-      setIsSubmitting(false); // Reset loading state after the operation
+      setIsSubmitting(false); // Reset loading state
     }
   }
 
@@ -209,20 +194,22 @@ export default function RegisterFlightPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Drone Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select drone type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="quadcopter">Quadcopter</SelectItem>
-                            <SelectItem value="hexacopter">Hexacopter</SelectItem>
-                            <SelectItem value="octocopter">Octocopter</SelectItem>
-                            <SelectItem value="fixed-wing">Fixed Wing</SelectItem>
-                            <SelectItem value="hybrid">Hybrid VTOL</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="bg-white text-black"> {/* Wrap Select in a div */}
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select drone type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="quadcopter">Quadcopter</SelectItem>
+                              <SelectItem value="hexacopter">Hexacopter</SelectItem>
+                              <SelectItem value="octocopter">Octocopter</SelectItem>
+                              <SelectItem value="fixed-wing">Fixed Wing</SelectItem>
+                              <SelectItem value="hybrid">Hybrid VTOL</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -274,24 +261,24 @@ export default function RegisterFlightPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Flight Purpose</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select flight purpose" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="recreational">Recreational</SelectItem>
-                            <SelectItem value="commercial-photography">Commercial - Photography/Videography</SelectItem>
-                            <SelectItem value="commercial-inspection">Commercial - Inspection</SelectItem>
-                            <SelectItem value="commercial-survey">Commercial - Survey/Mapping</SelectItem>
-                            <SelectItem value="commercial-agricultural">Commercial - Agricultural</SelectItem>
-                            <SelectItem value="commercial-safety">Commercial - Public Safety</SelectItem>
-                            <SelectItem value="commercial-delivery">Commercial - Delivery</SelectItem>
-                            <SelectItem value="commercial-other">Commercial - Other</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>Purpose affects insurance requirements</FormDescription>
+                        <div className="bg-white text-black"> {/* Wrap Select in a div */}
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select flight purpose" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="recreational">Recreational</SelectItem>
+                              <SelectItem value="commercial">Commercial</SelectItem>
+                              <SelectItem value="survey">Survey/Mapping</SelectItem>
+                              <SelectItem value="inspection">Inspection</SelectItem>
+                              <SelectItem value="photography">Photography/Videography</SelectItem>
+                              <SelectItem value="delivery">Delivery</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -310,9 +297,9 @@ export default function RegisterFlightPage() {
                             className="min-h-[100px]"
                             {...field}
                             onChange={(e) => {
-                              field.onChange(e)
+                              field.onChange(e);
                               if (e.target.value.length > 20 && !showSuggestions) {
-                                setShowSuggestions(true)
+                                setShowSuggestions(true);
                               }
                             }}
                           />
@@ -340,7 +327,7 @@ export default function RegisterFlightPage() {
                                     !field.value && "text-muted-foreground",
                                   )}
                                 >
-                                  {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                  {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
                                   <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                 </Button>
                               </FormControl>
@@ -348,8 +335,14 @@ export default function RegisterFlightPage() {
                             <PopoverContent className="w-auto p-0" align="start">
                               <Calendar
                                 mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
+                                selected={field.value ? new Date(field.value) : undefined} // Convert to Date object
+                                onSelect={(date) => {
+                                  if (date) {
+                                    field.onChange(date.toISOString().split('T')[0]); // Set date in YYYY-MM-DD format
+                                  } else {
+                                    field.onChange(""); // Optionally clear the field if no date is selected
+                                  }
+                                }}
                                 disabled={(date) => date < new Date()}
                                 initialFocus
                               />
@@ -520,7 +513,9 @@ export default function RegisterFlightPage() {
         </div>
 
         <div className="space-y-6">
-          {showSuggestions && <ComplianceSuggestions />}
+          {showSuggestions && validationSuggestions && ( // Conditionally render suggestions
+            <ComplianceSuggestions suggestions={validationSuggestions} />
+          )}
 
           <Card>
             <CardHeader>
@@ -558,5 +553,6 @@ export default function RegisterFlightPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
+
