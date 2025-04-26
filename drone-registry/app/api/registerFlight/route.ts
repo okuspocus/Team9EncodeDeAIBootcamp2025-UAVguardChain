@@ -1,8 +1,18 @@
 // app/api/registerFlight/route.ts
 import { NextResponse } from 'next/server';
 import { ethers } from 'ethers';
+import OpenAI from 'openai';
 
 export async function POST(request: Request) {
+  // Check if the OpenAI API key is set
+  if (!process.env.OPENAI_API_KEY) {
+    return NextResponse.json({ error: 'OpenAI API key is not set. Please set OPENAI_API_KEY in your environment.' }, { status: 500 });
+  }
+
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
   // Parse the incoming JSON request body
   const data = await request.json();
 
@@ -17,29 +27,22 @@ export async function POST(request: Request) {
   }
   // Add more validations as needed...
 
-  // Check if MetaMask is installed
-  if (typeof window === 'undefined' || !window.ethereum) {
-    // If MetaMask is not installed, return a 400 error response
-    return NextResponse.json({ error: 'Please install MetaMask!' }, { status: 400 });
-  }
-
-  // Initialize the Ethereum provider and signer
-  const provider = new ethers.BrowserProvider(window.ethereum);
-  const signer = await provider.getSigner(); // Get the signer for sending transactions
-
-  const contractAddress = "YOUR_CONTRACT_ADDRESS"; // Replace with your contract address
-  const contractABI = [
-    {
-      inputs: [
-        { internalType: "string", name: "droneName", type: "string" },
-        // Add other inputs as needed for the full registration
+  // Use OpenAI to determine if droneName is a number
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an API validator. Respond only with true if the input is a number, or false if it is not. Do not explain.'
+        },
+        {
+          role: 'user',
+          content: `Is this a number? ${data.droneName}`
+        }
       ],
-      name: "registerFlight",
-      outputs: [],
-      stateMutability: "nonpayable",
-      type: "function",
-    },
-  ];
+      max_tokens: 5,
+    });
 
   // Create a contract instance using the address and ABI
   const contract = new ethers.Contract(contractAddress, contractABI, signer);
