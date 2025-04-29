@@ -16,9 +16,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
-import { ComplianceSuggestions } from "@/components/compliance-suggestions";
+import FlightDetailsDialog from "@/components/flight-details-dialog"; // Import flight-details-dialog component
+import { ComplianceSuggestions } from "@/components/compliance-suggestions"; // Import ComplianceSuggestions component
 import { useAccount } from "wagmi"; // Import useAccount from wagmi for wallet connection
-
 
 // Define the schema for form validation using Zod
 const formSchema = z.object({
@@ -35,8 +35,6 @@ const formSchema = z.object({
   }, { message: "Flight date must be a valid date." }),
   startTime: z.string().min(1, { message: "Start time is required." }),
   endTime: z.string().min(1, { message: "End time is required." }),
-  location: z.string().min(5, { message: "Location must be at least 5 characters." }),
-  altitude: z.string().min(1, { message: "Maximum altitude is required." }),
 });
 
 export default function RegisterFlightPage() {
@@ -45,23 +43,6 @@ export default function RegisterFlightPage() {
   const [validationSuggestions, setValidationSuggestions] = useState<string | null>(null); // State for validation suggestions
   const { isConnected } = useAccount(); // Get wallet connection state
 
-  // ORIGINAL CODE
-  // const form = useForm<z.infer<typeof formSchema>>({
-  //   resolver: zodResolver(formSchema),
-  //   defaultValues: {
-  //     droneName: "",
-  //     droneModel: "",
-  //     serialNumber: "",
-  //     weight: "",
-  //     flightDescription: "",
-  //     startTime: "",
-  //     endTime: "",
-  //     location: "",
-  //     altitude: "",
-  //   },
-  // })
-
-  // MODIFIED CODE WITH AREA-BASED LOCATION AND REFINED SCHEMA:
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -72,8 +53,6 @@ export default function RegisterFlightPage() {
       flightDescription: "",
       startTime: "",
       endTime: "",
-      location: "",
-      altitude: "",
       flightDate: "", // Ensure flightDate is included
     },
   });
@@ -81,15 +60,14 @@ export default function RegisterFlightPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsSubmitting(true);
     console.log("Form Values:", values); // Log the collected data
-    console.log("Validation Errors:", form.formState.errors); // Log validation errors
-  
+
     // Check if wallet is connected
     if (!isConnected) {
       alert("Please connect your wallet first.");
       setIsSubmitting(false);
       return;
     }
-  
+
     try {
       // Validate flight data using the validation API
       const validationResponse = await fetch('/api/validate-flight', {
@@ -97,15 +75,15 @@ export default function RegisterFlightPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       });
-  
+
       const validationData = await validationResponse.json();
-  
+
       // Check if validation returned any errors
       console.log("Validation Data:", validationData); // Log validation response
       if (!validationResponse.ok) {
         throw new Error(validationData.error || 'Validation failed');
       }
-  
+
       // Set validation suggestions if provided
       if (validationData.result) {
         setValidationSuggestions(validationData.result); // Assuming result contains suggestions
@@ -114,20 +92,20 @@ export default function RegisterFlightPage() {
         setValidationSuggestions(null);
         setShowSuggestions(false);
       }
-  
+
       // Proceed to register the flight if validation is successful
       const response = await fetch('/api/registerFlight', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       });
-  
+
       const data = await response.json();
-  
+
       if (!response.ok) {
         throw new Error(data.error || 'Error registering flight');
       }
-  
+
       alert(data.message); // Show success alert
     } catch (error) {
       console.error("Error:", error);
@@ -148,368 +126,7 @@ export default function RegisterFlightPage() {
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-6">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* ORIGINAL CODE  - Drone Specifications Card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Drone className="h-5 w-5" />
-                    Drone Specifications
-                  </CardTitle>
-                  <CardDescription>Enter the details of your drone</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="droneName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Drone Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="My Drone" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="droneModel"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Drone Model</FormLabel>
-                        <FormControl>
-                          <Input placeholder="DJI Mavic 3" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="droneType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Drone Type</FormLabel>
-                        <div className="bg-white text-black"> {/* Wrap Select in a div */}
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select drone type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="quadcopter">Quadcopter</SelectItem>
-                              <SelectItem value="hexacopter">Hexacopter</SelectItem>
-                              <SelectItem value="octocopter">Octocopter</SelectItem>
-                              <SelectItem value="fixed-wing">Fixed Wing</SelectItem>
-                              <SelectItem value="hybrid">Hybrid VTOL</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="serialNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Serial Number</FormLabel>
-                          <FormControl>
-                            <Input placeholder="SN12345678" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="weight"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Weight (kg)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="0.9" type="number" step="0.1" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* ORIGINAL CODE - Flight Plan Card (First Part) */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Flight Plan</CardTitle>
-                  <CardDescription>Enter the details of your planned flight</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* MODIFIED CODE - Updated Flight Purpose with refined legal categories */}
-                  <FormField
-                    control={form.control}
-                    name="flightPurpose"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Flight Purpose</FormLabel>
-                        <div className="bg-white text-black"> {/* Wrap Select in a div */}
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select flight purpose" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="recreational">Recreational</SelectItem>
-                              <SelectItem value="commercial">Commercial</SelectItem>
-                              <SelectItem value="survey">Survey/Mapping</SelectItem>
-                              <SelectItem value="inspection">Inspection</SelectItem>
-                              <SelectItem value="photography">Photography/Videography</SelectItem>
-                              <SelectItem value="delivery">Delivery</SelectItem>
-                              <SelectItem value="other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* ORIGINAL CODE  - Flight Description */}
-                  <FormField
-                    control={form.control}
-                    name="flightDescription"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Flight Description</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Describe your flight plan and objectives"
-                            className="min-h-[100px]"
-                            {...field}
-                            onChange={(e) => {
-                              field.onChange(e);
-                              if (e.target.value.length > 20 && !showSuggestions) {
-                                setShowSuggestions(true);
-                              }
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* ORIGINAL CODE  - Flight Date and Time */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="flightDate"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>Flight Date</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant={"outline"}
-                                  className={cn(
-                                    "w-full pl-3 text-left font-normal",
-                                    !field.value && "text-muted-foreground",
-                                  )}
-                                >
-                                  {field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={field.value ? new Date(field.value) : undefined} // Convert to Date object
-                                onSelect={(date) => {
-                                  if (date) {
-                                    field.onChange(date.toISOString().split('T')[0]); // Set date in YYYY-MM-DD format
-                                  } else {
-                                    field.onChange(""); // Optionally clear the field if no date is selected
-                                  }
-                                }}
-                                disabled={(date) => date < new Date()}
-                                initialFocus
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <FormField
-                        control={form.control}
-                        name="startTime"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Start Time</FormLabel>
-                            <FormControl>
-                              <Input type="time" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="endTime"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>End Time</FormLabel>
-                            <FormControl>
-                              <Input type="time" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  {/* NEW CODE - Day/Night Operation */}
-                  <FormField
-                    control={form.control}
-                    name="dayNightOperation"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Operation Time</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select operation time" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="day">Day Operation</SelectItem>
-                            <SelectItem value="night">Night Operation</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>Night operations have additional requirements</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* REPLACED CODE - Area-Based Location instead of single location field */}
-                  {/* ORIGINAL CODE :
-                  <FormField
-                    control={form.control}
-                    name="location"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Location</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Address or coordinates" {...field} />
-                        </FormControl>
-                        <FormDescription>Enter an address or GPS coordinates</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="altitude"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Maximum Altitude (m)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="120" type="number" {...field} />
-                        </FormControl>
-                        <FormDescription>Maximum legal altitude is typically 120m (400ft)</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  /> */}
-
-                  {/* NEW CODE - Area-Based Location Fields */}
-                  <div className="space-y-4">
-                    <h4 className="font-medium flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      Flight Area
-                    </h4>
-                    
-                    <FormField
-                      control={form.control}
-                      name="flightAreaCenter"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Center Point</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Latitude, Longitude (e.g., 51.5074, -0.1278)" {...field} />
-                          </FormControl>
-                          <FormDescription>Enter the center coordinates of your flight area</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="flightAreaRadius"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Radius (meters)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="500" type="number" {...field} />
-                            </FormControl>
-                            <FormDescription>Maximum distance from center point</FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="flightAreaMaxHeight"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Maximum Height (feet)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="400" type="number" {...field} />
-                            </FormControl>
-                            <FormDescription>Maximum legal altitude is typically 400ft</FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" className="w-full" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Registering...
-                      </>
-                    ) : (
-                      "Register Flight"
-                    )}
-                  </Button>
-                </CardFooter>
-              </Card>
-            </form>
-          </Form>
+          <FlightDetailsDialog onSubmit={onSubmit} /> {/* Use the FlightDetailsDialog component */}
         </div>
 
         <div className="space-y-6">
@@ -555,4 +172,3 @@ export default function RegisterFlightPage() {
     </div>
   );
 }
-
