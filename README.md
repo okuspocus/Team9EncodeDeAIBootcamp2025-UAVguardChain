@@ -1,5 +1,8 @@
 # Team9EncodeDeAIBootcamp2025-UAVguardChain
 Bootcamp final project
+
+<img width="1547" alt="droneAI_web3" src="https://github.com/user-attachments/assets/c2cb6c88-33d7-4ac7-83f6-8299de165e24" />
+
 ## Step-by-Step Description
 
 ### The user/pilot opens the app
@@ -38,6 +41,9 @@ If the claim is uncontested (or valid after a failed challenge), the smart contr
 If the claim is contested and proven invalid, no compensation is issued.
 
 The final resolution (payment or rejection) is recorded on the blockchain.
+    
+![UAVguardCHAIN-2025-04-13-112304](https://github.com/user-attachments/assets/68d13bef-0298-40ea-a368-436e306d7c2a)
+
 
 Architecture:
 
@@ -60,19 +66,51 @@ Architecture:
      +------------------+   +---------------------+    +---------------------+
          |                |                         |       
          v                v                         v
-+-------------------+  +--------------------+   +-------------------------+
-| Flight Data Store  |  | Flight Registry    |   | Insurance Smart         |
-| (Text File / DB)   |  | Contract (Solidity)|   | Contract (Solidity)     |
-+-------------------+  +--------------------+   +-------------------------+
-                            |                         |
-                            v                         v
-                      +---------------------+   +-------------------------+
-                      | Claims Smart        |   | Transaction Confirmation |
-                      | Contract (Solidity) |   | (Blockchain interaction) |
-                      +---------------------+   +-------------------------+
+       +-------------------+  +--------------------+   +-------------------------+
+       | Flight Data Store  |  | Flight Registry    |   | Insurance Smart         |
+       | (Text File / DB)   |  | Contract (Solidity)|   | Contract (Solidity)     |
+       +-------------------+  +--------------------+   +-------------------------+
+                                   |                         |
+                                   v                         v
+                             +---------------------+   +-------------------------+
+                             | Claims Smart        |   | Transaction Confirmation |
+                             | Contract (Solidity) |   | (Blockchain interaction) |
+                             +---------------------+   +-------------------------+
+More details to the smart contracts
+/*
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract DroneRegistry {
+    uint256 public droneId;
+
+    event RegisteredFlight(uint256 indexed droneId, address indexed registrant);
+
+    constructor() {
+        droneId = 0;
+    }
+
+    function registerFlight() public {
+        droneId += 1;
+        emit RegisteredFlight(droneId, msg.sender);
+    }
+}
+
+*/
+I will be explaining this project in details, that is the smart contract
+1. We have the license Identifier
+2 We have our state variable, which allows users to access it
+3 Then we have our user-defined variable event that is used to be able to call out the value emitted to regulate the movement in the smart contract or what the Engineer is doing
+//  event RegisteredFlight(uint256 indexed droneId, //address indexed registrant);
+6    Then, to create a constructor that is  called only once for the owner
+7   Then the function that we called a local variable was assigned to a value
+
+   
+//  function registerFlight() public {
+  //      droneId += 1;
+        emit RegisteredFlight(droneId, msg.sender);
+  //  }
+  Then, we have to emit to tell the user who will be using the Dapp that we have only the droneID and him/her as the owner.
 
 
 
-
-    
-![UAVguardCHAIN-2025-04-13-112304](https://github.com/user-attachments/assets/68d13bef-0298-40ea-a368-436e306d7c2a)
