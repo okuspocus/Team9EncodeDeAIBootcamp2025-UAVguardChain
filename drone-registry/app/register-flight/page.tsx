@@ -3,48 +3,22 @@
 import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { format } from "date-fns";
-import { CalendarIcon, DrillIcon as Drone, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
-import FlightDetailsDialog from "@/components/flight-details-dialog"; // Import flight-details-dialog component
-import { ComplianceSuggestions } from "@/components/compliance-suggestions"; // Import ComplianceSuggestions component
-import { useAccount } from "wagmi"; // Import useAccount from wagmi for wallet connection
-
-// Define the schema for form validation using Zod
-const formSchema = z.object({
-  droneName: z.string().min(2, { message: "Drone name must be at least 2 characters." }),
-  droneModel: z.string().min(2, { message: "Drone model must be at least 2 characters." }),
-  droneType: z.string({ required_error: "Please select a drone type." }),
-  serialNumber: z.string().min(5, { message: "Serial number must be at least 5 characters." }),
-  weight: z.string().min(1, { message: "Weight is required." }),
-  flightPurpose: z.string({ required_error: "Please select a flight purpose." }),
-  flightDescription: z.string().min(10, { message: "Flight description must be at least 10 characters." }),
-  flightDate: z.string().refine((date) => {
-    const parsedDate = new Date(date);
-    return !isNaN(parsedDate.getTime()); // Ensure it's a valid date
-  }, { message: "Flight date must be a valid date." }),
-  startTime: z.string().min(1, { message: "Start time is required." }),
-  endTime: z.string().min(1, { message: "End time is required." }),
-});
+import FlightDetailsDialog from "@/components/flight-details-dialog";
+import { ComplianceSuggestions } from "@/components/compliance-suggestions";
+import { useAccount } from "wagmi";
+import { flightFormSchema, type FlightFormData } from "@/lib/schemas"; // Import shared schema
 
 export default function RegisterFlightPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [validationSuggestions, setValidationSuggestions] = useState<string | null>(null); // State for validation suggestions
-  const { isConnected } = useAccount(); // Get wallet connection state
+  const [validationSuggestions, setValidationSuggestions] = useState<string | null>(null);
+  const { isConnected } = useAccount();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<FlightFormData>({
+    resolver: zodResolver(flightFormSchema),
     defaultValues: {
       droneName: "",
       droneModel: "",
@@ -53,15 +27,18 @@ export default function RegisterFlightPage() {
       flightDescription: "",
       startTime: "",
       endTime: "",
-      flightDate: "", // Ensure flightDate is included
+      flightDate: "",
+      dayNightOperation: "day",
+      flightAreaCenter: "",
+      flightAreaRadius: "",
+      flightAreaMaxHeight: "400",
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: FlightFormData) {
     setIsSubmitting(true);
-    console.log("Form Values:", values); // Log the collected data
+    console.log("Form Values:", values);
 
-    // Check if wallet is connected
     if (!isConnected) {
       alert("Please connect your wallet first.");
       setIsSubmitting(false);
@@ -69,7 +46,6 @@ export default function RegisterFlightPage() {
     }
 
     try {
-      // Validate flight data using the validation API
       const validationResponse = await fetch('/api/validate-flight', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -78,22 +54,19 @@ export default function RegisterFlightPage() {
 
       const validationData = await validationResponse.json();
 
-      // Check if validation returned any errors
-      console.log("Validation Data:", validationData); // Log validation response
+      console.log("Validation Data:", validationData);
       if (!validationResponse.ok) {
         throw new Error(validationData.error || 'Validation failed');
       }
 
-      // Set validation suggestions if provided
       if (validationData.result) {
-        setValidationSuggestions(validationData.result); // Assuming result contains suggestions
+        setValidationSuggestions(validationData.result);
         setShowSuggestions(true);
       } else {
         setValidationSuggestions(null);
         setShowSuggestions(false);
       }
 
-      // Proceed to register the flight if validation is successful
       const response = await fetch('/api/registerFlight', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -106,12 +79,12 @@ export default function RegisterFlightPage() {
         throw new Error(data.error || 'Error registering flight');
       }
 
-      alert(data.message); // Show success alert
+      alert(data.message);
     } catch (error) {
       console.error("Error:", error);
-      alert("There was an error processing your request."); // Alert user of the error
+      alert("There was an error processing your request.");
     } finally {
-      setIsSubmitting(false); // Reset loading state
+      setIsSubmitting(false);
     }
   }
 
@@ -126,11 +99,11 @@ export default function RegisterFlightPage() {
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-6">
-          <FlightDetailsDialog onSubmit={onSubmit} /> {/* Use the FlightDetailsDialog component */}
+          <FlightDetailsDialog onSubmit={onSubmit} />
         </div>
 
         <div className="space-y-6">
-          {showSuggestions && validationSuggestions && ( // Conditionally render suggestions
+          {showSuggestions && validationSuggestions && (
             <ComplianceSuggestions suggestions={validationSuggestions} />
           )}
 
