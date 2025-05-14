@@ -5,143 +5,143 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { cn } from "@/lib/utils";
-import FlightDetailsDialog from "@/components/flight-details-dialog";
-import { ComplianceSuggestions } from "@/components/compliance-suggestions";
-import { useAccount } from "wagmi";
-import { flightFormSchema, type FlightFormData } from "@/lib/schemas"; // Import shared schema
+import { ComplianceSuggestions } from "@/components/compliance-suggestions"; 
+import { useAccount } from "wagmi"; 
+import { flightFormSchema, type FlightFormData } from "@/lib/schemas"; 
+import FlightDetailsDialog from "@/components/flight-details-dialog"; // Import the dialog component
+
+// Define the expected structure of the successful validation response result
+interface ValidationResult {
+    complianceMessages: string[]; 
+    dataHash: string;
+    ipfsCid: string;
+}
 
 export default function RegisterFlightPage() {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [validationSuggestions, setValidationSuggestions] = useState<string | null>(null);
-  const { isConnected } = useAccount();
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [validationResultData, setValidationResultData] = useState<ValidationResult | null>(null); 
+    const [validationError, setValidationError] = useState<string | null>(null); 
 
-  const form = useForm<FlightFormData>({
-    resolver: zodResolver(flightFormSchema),
-    defaultValues: {
-      droneName: "",
-      droneModel: "",
-      serialNumber: "",
-      weight: "",
-      flightDescription: "",
-      startTime: "",
-      endTime: "",
-      flightDate: "",
-      dayNightOperation: "day",
-      flightAreaCenter: "",
-      flightAreaRadius: "",
-      flightAreaMaxHeight: "400",
-    },
-  });
+    const { isConnected } = useAccount(); 
 
-  async function onSubmit(values: FlightFormData) {
-    setIsSubmitting(true);
-    console.log("Form Values:", values);
+    const form = useForm<FlightFormData>({
+        resolver: zodResolver(flightFormSchema), 
+        defaultValues: { 
+            droneName: "",
+            droneModel: "",
+            serialNumber: "",
+            weight: 0,
+            flightDescription: "",
+            startTime: "",
+            endTime: "",
+            flightDate: "",
+            dayNightOperation: "day",
+            flightAreaCenter: "",
+            flightAreaRadius: 0,
+            flightAreaMaxHeight: 0,
+            flightPurpose: "Recreational" 
+        },
+    });
 
-    if (!isConnected) {
-      alert("Please connect your wallet first.");
-      setIsSubmitting(false);
-      return;
+    async function onSubmit(values: FlightFormData) {
+        setIsSubmitting(true);
+        setValidationError(null); 
+        setValidationResultData(null); 
+        setShowSuggestions(false); 
+
+        console.log("Form Values:", values); 
+
+        if (!isConnected) {
+            alert("Please connect your wallet first."); 
+            setIsSubmitting(false);
+            return;
+        }
+
+        try {
+            // Step 1: Call validation endpoint
+            const validationResponse = await fetch('/api/validate-flight', {
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(values), 
+            });
+
+            const validationData = await validationResponse.json(); 
+            console.log("Validation Data:", validationData); 
+
+            if (!validationResponse.ok) {
+                const errorMessage = validationData.error || 'Validation failed with server error.';
+                setValidationError(errorMessage); 
+                throw new Error(errorMessage); 
+            }
+
+            // Handle successful validation response structure
+            if (validationData.result && Array.isArray(validationData.result.complianceMessages)) {
+                setValidationResultData(validationData.result); 
+                setShowSuggestions(true); 
+                setValidationError(null); 
+
+                // Step 2: If validation is successful, proceed to register flight
+                const registrationResponse = await fetch('/api/registerFlight', {
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({
+                        dataHash: validationData.result.dataHash 
+                    }),
+                });
+
+                const registrationData = await registrationResponse.json(); 
+
+                if (!registrationResponse.ok) {
+                    const errorMessage = registrationData.error || 'Error registering flight';
+                    setValidationError(errorMessage); 
+                    throw new Error(errorMessage); 
+                }
+
+                alert(registrationData.message); 
+                form.reset(); 
+                setValidationResultData(null); 
+                setShowSuggestions(false);
+
+            } else if (validationData.error) {
+                setValidationError(validationData.error); 
+                throw new Error(validationData.error); 
+            } else {
+                const errorMessage = "Received unexpected response format from validation API.";
+                setValidationError(errorMessage); 
+                console.error(errorMessage, validationData);
+                throw new Error(errorMessage);
+            }
+
+        } catch (error) {
+            console.error("Error:", error); 
+        } finally {
+            setIsSubmitting(false); 
+        }
     }
 
-    try {
-      const validationResponse = await fetch('/api/validate-flight', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      });
-
-      const validationData = await validationResponse.json();
-
-      console.log("Validation Data:", validationData);
-      if (!validationResponse.ok) {
-        throw new Error(validationData.error || 'Validation failed');
-      }
-
-      if (validationData.result) {
-        setValidationSuggestions(validationData.result);
-        setShowSuggestions(true);
-      } else {
-        setValidationSuggestions(null);
-        setShowSuggestions(false);
-      }
-
-      const response = await fetch('/api/registerFlight', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Error registering flight');
-      }
-
-      alert(data.message);
-    } catch (error) {
-      console.error("Error:", error);
-      alert("There was an error processing your request.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Register Flight</h1>
-        <p className="text-muted-foreground">
-          Register your drone flight details for compliance and insurance purposes
-        </p>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="space-y-6">
-          <FlightDetailsDialog onSubmit={onSubmit} />
-        </div>
-
-        <div className="space-y-6">
-          {showSuggestions && validationSuggestions && (
-            <ComplianceSuggestions suggestions={validationSuggestions} />
-          )}
-
-          <Card>
+    return (
+        <Card className="w-full max-w-2xl mx-auto"> 
             <CardHeader>
-              <CardTitle>Registration Requirements</CardTitle>
-              <CardDescription>Important information about flight registration</CardDescription>
+                <CardTitle>Register Flight</CardTitle>
+                <CardDescription>Register your drone flight details for compliance and insurance purposes</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <Alert>
-                <AlertTitle>Registration is required for drones over 250g</AlertTitle>
-                <AlertDescription>
-                  All drones weighing more than 250g must be registered with aviation authorities before flight.
-                </AlertDescription>
-              </Alert>
-
-              <div className="space-y-2">
-                <h4 className="font-medium">Required Documents</h4>
-                <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
-                  <li>Proof of drone ownership</li>
-                  <li>Pilot certification (for drones over 250g)</li>
-                  <li>Insurance documentation (recommended)</li>
-                </ul>
-              </div>
-
-              <div className="space-y-2">
-                <h4 className="font-medium">Flight Restrictions</h4>
-                <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
-                  <li>Maximum altitude of 400 feet (120 meters) above ground level</li>
-                  <li>Minimum distance of 5 miles from airports without authorization</li>
-                  <li>No flying over crowds or populated areas without special permission</li>
-                  <li>Always maintain visual line of sight with your drone</li>
-                </ul>
-              </div>
+            <CardContent>
+                {validationError && (
+                    <Alert variant="destructive" className="mb-4">
+                        <AlertTitle>Validation Error</AlertTitle>
+                        <AlertDescription>{validationError}</AlertDescription>
+                    </Alert>
+                )}
+                <FlightDetailsDialog onSubmit={onSubmit} /> {/* Use the dialog for flight details */}
             </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
-  );
+            <CardFooter>
+                {/* Additional footer content if needed */}
+            </CardFooter>
+
+            {showSuggestions && validationResultData?.complianceMessages && validationResultData.complianceMessages.length > 0 && (
+                <ComplianceSuggestions suggestions={validationResultData.complianceMessages} />
+            )}
+        </Card>
+    );
 }

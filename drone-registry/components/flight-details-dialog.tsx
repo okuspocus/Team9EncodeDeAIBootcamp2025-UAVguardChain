@@ -29,21 +29,30 @@ export default function FlightDetailsDialog({ onSubmit }: FlightDetailsDialogPro
       droneName: "",
       droneModel: "",
       serialNumber: "",
-      weight: "",
+      weight: 0,
       flightDescription: "",
       startTime: "",
       endTime: "",
       flightDate: "",
       dayNightOperation: "day",
       flightAreaCenter: "",
-      flightAreaRadius: "",
-      flightAreaMaxHeight: "400",
+      flightAreaRadius: 0,
+      flightAreaMaxHeight: 0,
     },
   });
 
   async function handleSubmit(values: FlightFormData) {
     setIsSubmitting(true);
-    await onSubmit(values);
+    
+    // Convert string inputs to numbers
+    const refinedValues = {
+      ...values,
+      weight: Number(values.weight),
+      flightAreaRadius: Number(values.flightAreaRadius),
+      flightAreaMaxHeight: Number(values.flightAreaMaxHeight),
+    };
+
+    await onSubmit(refinedValues);
     setIsSubmitting(false);
   }
 
@@ -100,11 +109,11 @@ export default function FlightDetailsDialog({ onSubmit }: FlightDetailsDialogPro
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="quadcopter">Quadcopter</SelectItem>
-                      <SelectItem value="hexacopter">Hexacopter</SelectItem>
-                      <SelectItem value="octocopter">Octocopter</SelectItem>
-                      <SelectItem value="fixed-wing">Fixed Wing</SelectItem>
-                      <SelectItem value="hybrid">Hybrid VTOL</SelectItem>
+                      <SelectItem value="Quadcopter">Quadcopter</SelectItem>
+                      <SelectItem value="Hexacopter">Hexacopter</SelectItem>
+                      <SelectItem value="Octocopter">Octocopter</SelectItem>
+                      <SelectItem value="Fixed Wing">Fixed Wing</SelectItem>
+                      <SelectItem value="Hybrid VTOL">Hybrid VTOL</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -163,13 +172,12 @@ export default function FlightDetailsDialog({ onSubmit }: FlightDetailsDialogPro
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="recreational">Recreational</SelectItem>
-                      <SelectItem value="commercial">Commercial</SelectItem>
-                      <SelectItem value="survey">Survey/Mapping</SelectItem>
-                      <SelectItem value="inspection">Inspection</SelectItem>
-                      <SelectItem value="photography">Photography/Videography</SelectItem>
-                      <SelectItem value="delivery">Delivery</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="Photography">Photography</SelectItem>
+                      <SelectItem value="Survey/Mapping">Survey/Mapping</SelectItem>
+                      <SelectItem value="Delivery">Delivery</SelectItem>
+                      <SelectItem value="Inspection">Inspection</SelectItem>
+                      <SelectItem value="Recreational">Recreational</SelectItem>
+                      <SelectItem value="Emergency Response">Emergency Response</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -338,11 +346,11 @@ export default function FlightDetailsDialog({ onSubmit }: FlightDetailsDialogPro
                   name="flightAreaMaxHeight"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Maximum Height (feet)</FormLabel>
+                      <FormLabel>Maximum Height (meters)</FormLabel>
                       <FormControl>
-                        <Input placeholder="400" type="number" {...field} />
+                        <Input placeholder="0" type="number" {...field} />
                       </FormControl>
-                      <FormDescription>Maximum legal altitude is typically 400ft</FormDescription>
+                      <FormDescription>Maximum legal altitude is typically 120m</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

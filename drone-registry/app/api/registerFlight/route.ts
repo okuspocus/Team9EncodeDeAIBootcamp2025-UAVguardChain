@@ -3,13 +3,13 @@ import { NextResponse } from 'next/server';
 import { ethers, JsonRpcProvider, Interface } from 'ethers'; // Import specific classes directly from ethers for v6 compatibility
 
 // Define your contract address and ABI
-const contractAddress = "YOUR_CONTRACT_ADDRESS"; // Replace with your actual contract address
+const contractAddress = "0x2e87c81eC65C153c5326EbD05691a6CD830040F3"; // Replace with your actual contract address
 
 // Initialize the ABI using the Interface class
 const contractABI: Interface = new Interface([ /* Your contract ABI here as a JSON array */ ]); // Replace with your actual contract ABI
 
-// Create a provider (assuming you are using a JSON-RPC provider)
-const provider = new JsonRpcProvider("YOUR_JSON_RPC_URL"); // Replace with your actual JSON-RPC URL
+// Create a provider using your JSON-RPC URL
+const provider = new JsonRpcProvider("https://rpc-amoy.polygon.technology/"); // Use your actual JSON-RPC URL
 
 // Get the signer from the provider (Note: getSigner is async in v6)
 const signer = await provider.getSigner(); // Get the signer from the provider
