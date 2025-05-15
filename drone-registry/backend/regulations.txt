@@ -55,7 +55,7 @@ Each flight plan must include the following:
   - Format: YYYY-MM-DD
   - Cannot be in the past.
 - Start/End Time:
-  - Format: HH:MM AM/PM
+  - Format: HH:MM
   - Must be between 6:00AM and 7:30PM.
   - Start time must be before end time.
 - Location:

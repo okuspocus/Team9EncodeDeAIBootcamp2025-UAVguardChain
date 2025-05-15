@@ -8,8 +8,19 @@ from llama_index.llms.openai import OpenAI
 from llama_index.core.tools import QueryEngineTool
 from llama_index.core.agent import ReActAgent
 from llama_index.readers.llama_parse import LlamaParse
+from web3 import Web3
+import aioipfs  # Using the new asynchronous IPFS library
+import asyncio  # Import asyncio to run async code
+from eth_hash.auto import keccak  # Importing keccak for hashing
+import sqlite3
+from dotenv import load_dotenv
 
-print(f"DEBUG: LLAMA_CLOUD_API_KEY={os.getenv('LLAMA_CLOUD_API_KEY')}", file=sys.stderr)
+# Load environment variables
+load_dotenv()
+
+# Initialize Web3
+w3 = Web3()
+
 # Set the LLM settings
 Settings.llm = OpenAI(model="gpt-4o-mini", temperature=0)
 
@@ -20,56 +31,135 @@ def extract_answer(text):
         return match.group(1).strip()
     return text.strip()
 
-def validate_flight_data(flight_data: str) -> dict:
-    """Validates flight data against regulations."""
-    regulations_path = os.path.join(os.path.dirname(__file__), "regulations.txt")
-    print(f"Attempting to load regulations from: {regulations_path}", file=sys.stderr)  # Log attempt
+# Database setup
+def setup_database():
+    conn = sqlite3.connect('flight_data.db')
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS flight_mappings
+        (data_hash TEXT PRIMARY KEY, ipfs_cid TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)
+    ''')
+    conn.commit()
+    return conn
 
-    try:
-        # Load the regulations file correctly with verbose set to False
-        documents = LlamaParse(result_type="text", verbose=False).load_data(regulations_path)
-        print("Successfully loaded regulations.", file=sys.stderr)  # Log success
-    except FileNotFoundError:
-        print(f"Regulations file not found at: {regulations_path}", file=sys.stderr)  # Log error
-        return {"error": f"Regulations file not found at: {regulations_path}"}
-    except Exception as e:
-        print(f"Error loading regulations: {str(e)}", file=sys.stderr)  # Log error
-        return {"error": f"Error loading regulations: {str(e)}"}
+def serialize_flight_data(flight_data: dict) -> str:
+    """Serialize flight data in a consistent manner."""
+    ordered_data = {
+        "droneName": flight_data.get("droneName", ""),
+        "droneModel": flight_data.get("droneModel", ""),
+        "droneType": flight_data.get("droneType", ""),
+        "serialNumber": flight_data.get("serialNumber", ""),
+        "weight": flight_data.get("weight", None),
+        "flightPurpose": flight_data.get("flightPurpose", ""),
+        "flightDescription": flight_data.get("flightDescription", ""),
+        "flightDate": flight_data.get("flightDate", ""),
+        "startTime": flight_data.get("startTime", ""),
+        "endTime": flight_data.get("endTime", ""),
+        "flightAreaCenter": flight_data.get("flightAreaCenter", ""),
+        "flightAreaRadius": flight_data.get("flightAreaRadius", None),
+        "flightAreaMaxHeight": flight_data.get("flightAreaMaxHeight", None),
+        "additionalNotes": flight_data.get("additionalNotes", "")
+    }
+    return json.dumps(ordered_data, sort_keys=True, separators=(',', ':'))
 
-    # Initialize compliance messages
+def calculate_hash(serialized_data: str) -> bytes:
+    """Calculate keccak256 hash of the serialized data."""
+    # Encode the string to bytes (e.g., UTF-8) and pass it without the 'text' keyword
+    return keccak(serialized_data.encode('utf-8'))  # Corrected call
+
+def store_flight_data(data_hash: str, ipfs_cid: str, conn):
+    """Store the mapping between data hash and IPFS CID."""
+    c = conn.cursor()
+    c.execute('INSERT INTO flight_mappings (data_hash, ipfs_cid) VALUES (?, ?)',
+              (data_hash, ipfs_cid))
+    conn.commit()
+
+async def validate_flight_data(flight_data: dict) -> dict:
+    """Validates flight data against regulations using LlamaIndex."""
     compliance_messages = []
+    regulations_path = os.path.join(os.path.dirname(__file__), "regulations.txt")
 
-    # Extract flight data fields
-    flight_date_str = flight_data.get("flightDate")
-    start_time_str = flight_data.get("startTime")
-    end_time_str = flight_data.get("endTime")
+    print(f"Attempting to load regulations from: {regulations_path}", file=sys.stderr)
 
-    # Perform deterministic checks
     try:
+        documents = await LlamaParse(result_type="text", verbose=False).aload_data(regulations_path)
+        print("Successfully loaded regulations.", file=sys.stderr)
+
+        # --- Basic Deterministic Checks ---
+        print("Performing deterministic checks...", file=sys.stderr)
+
         # Check flight date
-        flight_date = datetime.fromisoformat(flight_date_str.replace("Z", "+00:00"))  # Handle timezone
-        current_date = datetime.now()
-        if flight_date.date() < current_date.date():
-            compliance_messages.append("Flight date must be in the future.")
+        flight_date_str = flight_data.get("flightDate")
+        if flight_date_str:
+            try:
+                flight_date = datetime.strptime(flight_date_str, "%Y-%m-%d").date()
+                if flight_date < datetime.now().date():
+                    compliance_messages.append("Flight date is in the past.")
+            except ValueError:
+                compliance_messages.append(f"Invalid flight date format: {flight_date_str}. Expected YYYY-MM-DD.")
+        else:
+            compliance_messages.append("Flight date is missing.")
 
         # Check start and end times
-        start_time = datetime.strptime(start_time_str, "%H:%M").time()
-        end_time = datetime.strptime(end_time_str, "%H:%M").time()
-        allowed_start_time = time(6, 0)  # 6:00 AM
-        allowed_end_time = time(19, 30)  # 7:30 PM
+        start_time_str = flight_data.get("startTime")
+        end_time_str = flight_data.get("endTime")
+        if start_time_str and end_time_str:
+            try:
+                start_time = datetime.strptime(start_time_str, "%H:%M").time()
+                end_time = datetime.strptime(end_time_str, "%H:%M").time()
+                if start_time >= end_time:
+                    compliance_messages.append("Start time must be before end time.")
+            except ValueError:
+                compliance_messages.append(f"Invalid time format: {start_time_str} or {end_time_str}. Expected HH:MM.")
+        else:
+            if not start_time_str:
+                compliance_messages.append("Start time is missing.")
+            if not end_time_str:
+                compliance_messages.append("End time is missing.")
 
-        if start_time < allowed_start_time or start_time > allowed_end_time:
-            compliance_messages.append("Start time must be between 6:00 AM and 7:30 PM.")
-        if end_time < allowed_start_time or end_time > allowed_end_time:
-            compliance_messages.append("End time must be between 6:00 AM and 7:30 PM.")
-        if start_time >= end_time:
-            compliance_messages.append("Start time must be before end time.")
+        # Check drone weight
+        weight = flight_data.get("weight")
+        if weight is not None:
+            try:
+                weight_kg = float(weight)
+                if weight_kg > 250:
+                    compliance_messages.append("Drone weight exceeds 250g. Additional regulations may apply.")
+            except ValueError:
+                compliance_messages.append(f"Invalid weight format: {weight}. Expected a number.")
+        else:
+            compliance_messages.append("Drone weight is missing.")
 
-    except ValueError as e:
-        compliance_messages.append(f"Error parsing date or time: {str(e)}")
+        print("Deterministic checks complete.", file=sys.stderr)
 
-    try:
-        print("Starting AI agent process...", file=sys.stderr)  # Log start of core logic
+        # --- LLM-based Validation ---
+        query_text = f"""
+        Validate the following flight data against the provided regulations:
+        Drone Name: {flight_data.get('droneName')}
+        Drone Model: {flight_data.get('droneModel')}
+        Serial Number: {flight_data.get('serialNumber')}
+        Weight: {flight_data.get('weight')}g
+        Flight Purpose: {flight_data.get('flightPurpose')}
+        Flight Description: {flight_data.get('flightDescription')}
+        Flight Date: {flight_data.get('flightDate')}
+        Start Time: {flight_data.get('startTime')}
+        End Time: {flight_data.get('endTime')}
+        Flight Area Center: {flight_data.get('flightAreaCenter')}
+        Flight Area Radius: {flight_data.get('flightAreaRadius')} meters
+        Flight Area Max Height: {flight_data.get('flightAreaMaxHeight')} meters
+        Additional Notes: {flight_data.get('additionalNotes')}
+
+        Check specifically for compliance regarding:
+        - Time of flight (e.g., day/night restrictions)
+        - Altitude restrictions
+        - Proximity to restricted areas
+        - Weight restrictions
+        - Purpose of flight
+
+        Output your response clearly, starting with a summary of compliance issues found, if any. If no issues are found, state that the data appears compliant according to the regulations provided. List specific non-compliance points as bullet points. Structure your final conclusion with 'Answer:' followed by the summary.
+        """
+        print("Constructed LLM query.", file=sys.stderr)
+
+        print("Starting AI agent process...", file=sys.stderr)
         index = VectorStoreIndex.from_documents(documents)
         query_engine = index.as_query_engine()
         query_tool = QueryEngineTool.from_defaults(
@@ -77,60 +167,123 @@ def validate_flight_data(flight_data: str) -> dict:
             name="RegulationValidator",
             description="A tool for validating flight details against the regulations.",
         )
-
         agent = ReActAgent.from_tools([query_tool], verbose=False)
 
-        print("Agent initialized. Sending chat query...", file=sys.stderr)  # Log before agent call
-        raw_response = agent.chat(
-            f"Check if the following flight data is compliant with regulations, considering all relevant details in the regulations file. Flight Date: {flight_date_str}, Start Time: {start_time_str}, End Time: {end_time_str}. Provide detailed suggestions for improvement.\nFlight Data: {flight_data}"
-        )
-        print("Agent chat response received.", file=sys.stderr)  # Log after agent call
+        print("Agent initialized. Sending chat query...", file=sys.stderr)
+        response = agent.chat(query_text)
+        print("Agent response received.", file=sys.stderr)
 
-        # Log the raw response for debugging
-        print(f"Raw AI Response: {raw_response}", file=sys.stderr)
+        ai_response_text = str(response)
+        llm_compliance_summary = extract_answer(ai_response_text)
+        if llm_compliance_summary:
+            compliance_messages.append(f"AI Analysis: {llm_compliance_summary}")
 
-        # Convert response to string if needed
-        response_text = str(raw_response)
+        print("LLM-based validation complete.", file=sys.stderr)
 
-        # Extract the answer or return the full AI response
-        cleaned_answer = extract_answer(response_text)
-        print(f"Extracted Answer: {cleaned_answer}", file=sys.stderr)  # Log the extracted answer
+        return {"compliance_messages": compliance_messages}
 
-        # Combine deterministic compliance messages with AI suggestions
-        if compliance_messages:
-            final_message = "\n".join(compliance_messages) + "\n" + cleaned_answer
-        else:
-            final_message = cleaned_answer
+    except FileNotFoundError:
+        print(f"Regulations file not found at: {regulations_path}", file=sys.stderr)
+        return {"error": f"Regulations file not found at: {regulations_path}"}
+    except Exception as e:
+        print(f"Error during LlamaIndex/AI processing: {str(e)}", file=sys.stderr)
+        compliance_messages.append(f"Error during AI analysis: {str(e)}")
+        return {"compliance_messages": compliance_messages, "error": f"AI processing failed: {str(e)}"}
 
-        # Ensure we return a valid, serializable result
-        result = {"answer": final_message if final_message else "No valid answer returned."}
-        print("Returning result:", json.dumps(result), file=sys.stderr)  # Log the result before returning
-        return result
+# Make the main processing function asynchronous
+async def validate_and_process_flight_data_async(flight_data: dict) -> dict:
+    """Validate flight data and process it for blockchain storage, including async IPFS upload."""
+    try:
+        print("Connecting to IPFS...", file=sys.stderr)
+        async with aioipfs.AsyncIPFS() as ipfs_client:
+            print("IPFS client connected.", file=sys.stderr)
+
+            # Validate flight data
+            validation_result = await validate_flight_data(flight_data)
+
+            if "error" in validation_result and validation_result["error"].startswith("Regulations file not found"):
+                return validation_result
+
+            compliance_messages = validation_result.get("compliance_messages", [])
+
+            # Serialize the flight data
+            print("Serializing flight data...", file=sys.stderr)
+            serialized_data = serialize_flight_data(flight_data)
+            print("Data serialized.", file=sys.stderr)
+
+            # Calculate hash
+            print("Calculating hash...", file=sys.stderr)
+            data_hash = calculate_hash(serialized_data)
+            data_hash_hex = data_hash.hex()
+            print(f"Data hash calculated: {data_hash_hex}", file=sys.stderr)
+
+            # Upload to IPFS
+            print("Uploading data to IPFS...", file=sys.stderr)
+            try:
+                ipfs_add_result = await ipfs_client.core.add_bytes(serialized_data.encode('utf-8'))
+                ipfs_cid = ipfs_add_result['Hash']
+                print(f"Data uploaded to IPFS with CID: {ipfs_cid}", file=sys.stderr)
+
+                # Store mapping in database
+                print("Storing mapping in database...", file=sys.stderr)
+                conn = setup_database()
+                store_flight_data(data_hash_hex, ipfs_cid, conn)
+                conn.close()
+                print("Mapping stored.", file=sys.stderr)
+
+            except Exception as ipfs_e:
+                print(f"IPFS or Database Error: {ipfs_e}", file=sys.stderr)
+                compliance_messages.append(f"Processing failed: IPFS or database error: {ipfs_e}")
+                return {
+                    "compliance_messages": compliance_messages,
+                    "dataHash": data_hash_hex,
+                    "ipfsCid": None,
+                    "error": f"IPFS or Database Processing error: {str(ipfs_e)}"
+                }
+
+            result = {
+                "compliance_messages": compliance_messages,
+                "dataHash": data_hash_hex,
+                "ipfsCid": ipfs_cid,
+            }
+
+            if "error" in validation_result:
+                result["validation_error"] = validation_result["error"]
+
+            return result
 
     except Exception as e:
-        # If an error happens anywhere in the try block, log it and return an error
-        print(f"Error during flight data validation: {str(e)}", file=sys.stderr)  # Log error
-        return {"error": f"Unexpected error: {str(e)}"}
+        print(f"Unexpected error in async processing: {e}", file=sys.stderr)
+        return {"error": f"Unexpected processing error: {str(e)}"}
 
 if __name__ == "__main__":
-    print("Script started.", file=sys.stderr)  # Log script start
+    print("Script started.", file=sys.stderr)
     try:
-        print("Reading input from stdin...", file=sys.stderr)  # Log input reading
         input_json = sys.stdin.read()
+        print(f"Received input JSON: {input_json}", file=sys.stderr)
+
+        if not input_json:
+            raise ValueError("No input JSON received.")
+
         flight_data = json.loads(input_json)
-        print("Input successfully parsed as JSON.", file=sys.stderr)  # Log parsing success
+        print("Input JSON parsed successfully.", file=sys.stderr)
 
-        # Validate flight data
-        print("Calling validate_flight_data...", file=sys.stderr)  # Log function call
-        result = validate_flight_data(flight_data)
-        print("validate_flight_data finished.", file=sys.stderr)  # Log function return
+        result = asyncio.run(validate_and_process_flight_data_async(flight_data))
 
-        # Log before printing the result
-        print("Preparing to print the result to stdout...", file=sys.stderr)  # Log before final print
-        print(json.dumps(result))  # Only print the final result to stdout
-        print("Result printed successfully.", file=sys.stderr)  # Log after printing the result
+        print(json.dumps(result))
+        print("Script finished successfully.", file=sys.stderr)
+
+    except json.JSONDecodeError:
+        print("Error: Invalid JSON input received.", file=sys.stderr)
+        print(json.dumps({"error": "Invalid JSON input received."}))
+        sys.exit(1)
+
+    except ValueError as ve:
+        print(f"Error: {ve}", file=sys.stderr)
+        print(json.dumps({"error": str(ve)}))
+        sys.exit(1)
 
     except Exception as e:
-        # Print the error to stderr and exit with error code
-        print(f"Error in main block: {e}", file=sys.stderr)
+        print(f"An unexpected error occurred in the main execution block: {e}", file=sys.stderr)
+        print(json.dumps({"error": f"An unexpected error occurred: {str(e)}"}))
         sys.exit(1)
